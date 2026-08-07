@@ -138,6 +138,6 @@ Theme:
 
 Environment:
   MDV_PORT, MDV_HOST, MDV_BROWSER, MDV_WATCH (fsnotify|poll),
-  MDV_THEME (auto|light|dark), MDV_CSS, MDV_STATE_DIR, NO_COLOR
+  MDV_THEME (auto|light|dark), MDV_CSS, MDV_STATE_DIR
 `)
 }

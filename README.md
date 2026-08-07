@@ -64,24 +64,24 @@ macOS); on Windows, run in the foreground.
 
 ### Flags
 
-| Short | Long        | Default     | Description                                           |
-| ----- | ----------- | ----------- | ----------------------------------------------------- |
-| `-p`  | `--port`    | `4649`      | Listen port (+1, up to 20 times, if the port is busy) |
-|       | `--host`    | `127.0.0.1` | Bind address                                          |
-| `-t`  | `--theme`   | `auto`      | Color theme: `auto` \| `light` \| `dark`              |
+| Short | Long        | Default     | Description                                            |
+| ----- | ----------- | ----------- | ------------------------------------------------------ |
+| `-p`  | `--port`    | `4649`      | Listen port (+1, up to 20 times, if the port is busy)  |
+|       | `--host`    | `127.0.0.1` | Bind address                                           |
+| `-t`  | `--theme`   | `auto`      | Color theme: `auto` \| `light` \| `dark`               |
 | `-c`  | `--css`     |             | Path to a custom CSS file (else auto-loads `.mdv.css`) |
-| `-d`  | `--daemon`  |             | Run in the background and return to the shell         |
-| `-n`  | `--no-open` |             | Do not open the browser automatically                 |
-| `-q`  | `--quiet`   |             | Suppress access logs                                  |
-| `-h`  | `--help`    |             | Show help                                             |
-| `-V`  | `--version` |             | Show version                                          |
+| `-d`  | `--daemon`  |             | Run in the background and return to the shell          |
+| `-n`  | `--no-open` |             | Do not open the browser automatically                  |
+| `-q`  | `--quiet`   |             | Suppress access logs                                   |
+| `-h`  | `--help`    |             | Show help                                              |
+| `-V`  | `--version` |             | Show version                                           |
 
 ### Subcommands
 
-| Command                     | Description                          |
-| --------------------------- | ------------------------------------ |
-| `mdv stop [--port N \| --all]` | Stop background server(s)         |
-| `mdv ls` (alias `status`)   | List running background servers      |
+| Command                        | Description                     |
+| ------------------------------ | ------------------------------- |
+| `mdv stop [--port N \| --all]` | Stop background server(s)       |
+| `mdv ls` (alias `status`)      | List running background servers |
 
 ### Theming
 
@@ -109,8 +109,13 @@ Useful hooks:
   them to re-skin both themes at once, e.g.:
 
   ```css
-  [data-theme="dark"] { --bg: #101418; --link: #7aa2f7; }
-  :root { --mdv-max-width: 820px; }   /* content column width */
+  [data-theme="dark"] {
+    --bg: #101418;
+    --link: #7aa2f7;
+  }
+  :root {
+    --mdv-max-width: 820px;
+  } /* content column width */
   ```
 
 The stylesheet is served with `Cache-Control: no-store`, so a browser refresh
@@ -119,7 +124,7 @@ picks up edits immediately.
 ### Environment variables
 
 `MDV_PORT` / `MDV_HOST` / `MDV_BROWSER` / `MDV_WATCH` (`fsnotify`\|`poll`) /
-`MDV_THEME` (`auto`\|`light`\|`dark`) / `MDV_CSS` / `MDV_STATE_DIR` / `NO_COLOR`
+`MDV_THEME` (`auto`\|`light`\|`dark`) / `MDV_CSS` / `MDV_STATE_DIR`
 (precedence: flag > environment variable > default)
 
 ## Development

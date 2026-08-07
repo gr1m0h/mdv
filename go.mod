@@ -1,6 +1,6 @@
 module github.com/gr1m0h/mdv
 
-go 1.25
+go 1.25.0
 
 require (
 	github.com/alecthomas/chroma/v2 v2.27.0
@@ -14,6 +14,6 @@ require (
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/dlclark/regexp2/v2 v2.2.1 // indirect
 	github.com/gorilla/css v1.0.1 // indirect
-	golang.org/x/net v0.38.0 // indirect
-	golang.org/x/sys v0.31.0 // indirect
+	golang.org/x/net v0.55.0 // indirect
+	golang.org/x/sys v0.45.0 // indirect
 )

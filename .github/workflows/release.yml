@@ -18,7 +18,15 @@ jobs:
         with:
           experimental: true
       - name: vendor mermaid bundle
-        run: mise run vendor-mermaid
+        run: |
+          mise run vendor-mermaid
+          # The committed mermaid assets are stubs; vendoring replaces them,
+          # which dirties the tree. Hide the change so goreleaser's clean-state
+          # check passes while the real bundle is embedded into the build.
+          git update-index --assume-unchanged \
+            internal/assets/static/mermaid.min.js \
+            internal/assets/static/mermaid.version \
+            internal/assets/static/mermaid.LICENSE
       - name: goreleaser
         uses: goreleaser/goreleaser-action@v6
         with:

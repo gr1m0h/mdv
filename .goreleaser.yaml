@@ -1,0 +1,55 @@
+version: 2
+
+before:
+  hooks:
+    # mermaid is vendored by the release workflow step before goreleaser runs.
+    - go mod tidy
+
+builds:
+  - id: mdv
+    main: .
+    binary: mdv
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X main.version={{.Version}}
+    goos: [darwin, linux]
+    goarch: [amd64, arm64]
+
+archives:
+  - id: mdv
+    formats: [tar.gz]
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    files:
+      - LICENSE
+      - README.md
+      - THIRD_PARTY_LICENSES.md
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'
+
+# Homebrew tap. Requires a separate repo `gr1m0h/homebrew-tap` and a
+# HOMEBREW_TAP_GITHUB_TOKEN secret with write access to it. Remove this block
+# if you do not maintain a tap.
+brews:
+  - name: mdv
+    repository:
+      owner: gr1m0h
+      name: homebrew-tap
+      token: '{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}'
+    homepage: 'https://github.com/gr1m0h/mdv'
+    description: 'Render Markdown in the browser from the CLI, fully offline'
+    license: MIT
+    test: |
+      system "#{bin}/mdv", "--version"

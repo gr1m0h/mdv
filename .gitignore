@@ -8,6 +8,10 @@
 *.so
 *.dylib
 
+# mdv build output and release artifacts
+/mdv
+/dist/
+
 # Test binary, built with `go test -c`
 *.test
 

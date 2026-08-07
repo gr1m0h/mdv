@@ -30,6 +30,7 @@ func parseArgs(args []string, stderr io.Writer) (opts options, help, ver bool, e
 	if v := os.Getenv("MDV_WATCH"); v != "" {
 		envWatch = v
 	}
+	envCSS := os.Getenv("MDV_CSS")
 
 	fs := flag.NewFlagSet("mdv", flag.ContinueOnError)
 	fs.SetOutput(stderr)
@@ -38,6 +39,8 @@ func parseArgs(args []string, stderr io.Writer) (opts options, help, ver bool, e
 	var (
 		portLong, portShort     int
 		hostFlag                string
+		themeLong, themeShort   string
+		cssLong, cssShort       string
 		noOpenLong, noOpenShort bool
 		quietLong, quietShort   bool
 		daemonLong, daemonShort bool
@@ -47,6 +50,10 @@ func parseArgs(args []string, stderr io.Writer) (opts options, help, ver bool, e
 	fs.IntVar(&portLong, "port", envPort, "listen port")
 	fs.IntVar(&portShort, "p", envPort, "listen port (shorthand)")
 	fs.StringVar(&hostFlag, "host", envHost, "bind address")
+	fs.StringVar(&themeLong, "theme", envTheme, "color theme (auto|light|dark)")
+	fs.StringVar(&themeShort, "t", envTheme, "color theme (shorthand)")
+	fs.StringVar(&cssLong, "css", envCSS, "path to a custom CSS file")
+	fs.StringVar(&cssShort, "c", envCSS, "path to a custom CSS file (shorthand)")
 	fs.BoolVar(&noOpenLong, "no-open", false, "do not open the browser")
 	fs.BoolVar(&noOpenShort, "n", false, "do not open the browser (shorthand)")
 	fs.BoolVar(&quietLong, "quiet", false, "suppress access logs")
@@ -69,6 +76,14 @@ func parseArgs(args []string, stderr io.Writer) (opts options, help, ver bool, e
 	if set["p"] {
 		port = portShort
 	}
+	theme := themeLong
+	if set["t"] {
+		theme = themeShort
+	}
+	css := cssLong
+	if set["c"] {
+		css = cssShort
+	}
 
 	opts = options{
 		port:      port,
@@ -76,7 +91,8 @@ func parseArgs(args []string, stderr io.Writer) (opts options, help, ver bool, e
 		noOpen:    noOpenLong || noOpenShort,
 		quiet:     quietLong || quietShort,
 		daemon:    daemonLong || daemonShort,
-		theme:     envTheme,
+		theme:     theme,
+		css:       css,
 		watchMode: envWatch,
 		path:      ".",
 	}
@@ -101,14 +117,27 @@ Arguments:
 Options:
   -p, --port int  listen port (default 4649; +1 up to 20 times if busy)
       --host str  bind address (default "127.0.0.1")
+  -t, --theme str color theme: auto|light|dark (default "auto")
+  -c, --css str   path to a custom CSS file (else auto-loads .mdv.css in root)
   -d, --daemon    run in the background and return to the shell
   -n, --no-open   do not open the browser
   -q, --quiet     suppress access logs
   -h, --help      show this help and exit
   -V, --version   show version and exit
 
+Custom CSS:
+  Loaded after the built-in styles, so your rules win. mdv looks for a
+  custom stylesheet in this order: --css/-c, MDV_CSS, then .mdv.css in the
+  served root directory. Target .markdown-body for document content, and
+  scope to [data-theme="dark"] / [data-theme="light"] for per-theme rules.
+
+Theme:
+  Switch light/dark in the browser with the toggle button (top-right); the
+  choice is remembered per browser and overrides --theme. "auto" follows the
+  OS setting until you pick one.
+
 Environment:
   MDV_PORT, MDV_HOST, MDV_BROWSER, MDV_WATCH (fsnotify|poll),
-  MDV_THEME (auto|light|dark), MDV_STATE_DIR, NO_COLOR
+  MDV_THEME (auto|light|dark), MDV_CSS, MDV_STATE_DIR, NO_COLOR
 `)
 }

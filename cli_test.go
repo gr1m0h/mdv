@@ -139,6 +139,78 @@ func TestResolveRoot(t *testing.T) {
 	}
 }
 
+// --theme/-t and --css/-c parse and win over their env defaults.
+func TestParseThemeAndCSS(t *testing.T) {
+	t.Setenv("MDV_THEME", "dark")
+	t.Setenv("MDV_CSS", "")
+
+	var stderr bytes.Buffer
+	opts, _, _, err := parseArgs([]string{"-t", "light", "--css", "/tmp/x.css", "doc.md"}, &stderr)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if opts.theme != "light" {
+		t.Errorf("theme = %q, want light", opts.theme)
+	}
+	if opts.css != "/tmp/x.css" {
+		t.Errorf("css = %q, want /tmp/x.css", opts.css)
+	}
+	if opts.path != "doc.md" {
+		t.Errorf("path = %q, want doc.md", opts.path)
+	}
+}
+
+// Env defaults apply when the flags are absent.
+func TestThemeEnvDefault(t *testing.T) {
+	t.Setenv("MDV_THEME", "dark")
+	var stderr bytes.Buffer
+	opts, _, _, err := parseArgs(nil, &stderr)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if opts.theme != "dark" {
+		t.Errorf("theme = %q, want dark (from env)", opts.theme)
+	}
+}
+
+func TestResolveCustomCSS(t *testing.T) {
+	root := t.TempDir()
+	real, _ := filepath.EvalSymlinks(root)
+
+	// None configured, no .mdv.css → "".
+	var stderr bytes.Buffer
+	if got := resolveCustomCSS("", real, &stderr); got != "" {
+		t.Errorf("no css = %q, want empty", got)
+	}
+
+	// Auto-detect .mdv.css in root.
+	auto := filepath.Join(real, ".mdv.css")
+	if err := os.WriteFile(auto, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if got := resolveCustomCSS("", real, &stderr); got != auto {
+		t.Errorf("auto css = %q, want %q", got, auto)
+	}
+
+	// Explicit path wins.
+	explicit := filepath.Join(real, "theme.css")
+	if err := os.WriteFile(explicit, []byte("y"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if got := resolveCustomCSS(explicit, real, &stderr); got != explicit {
+		t.Errorf("explicit css = %q, want %q", got, explicit)
+	}
+
+	// Explicit but missing → warn + "".
+	stderr.Reset()
+	if got := resolveCustomCSS(filepath.Join(real, "nope.css"), real, &stderr); got != "" {
+		t.Errorf("missing explicit css = %q, want empty", got)
+	}
+	if stderr.Len() == 0 {
+		t.Errorf("expected a warning for missing explicit css")
+	}
+}
+
 func freePort(t *testing.T) int {
 	t.Helper()
 	ln, err := net.Listen("tcp", "127.0.0.1:0")

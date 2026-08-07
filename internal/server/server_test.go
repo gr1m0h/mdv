@@ -175,6 +175,58 @@ func TestServedPagesAreSameOrigin(t *testing.T) {
 	}
 }
 
+// Custom CSS: when configured it is served at /__mdv/custom.css and linked
+// from both the shell and the index; without it the route is 404.
+func TestCustomCSS(t *testing.T) {
+	tmp := t.TempDir()
+	real, err := filepath.EvalSymlinks(tmp)
+	if err != nil {
+		t.Fatalf("evalsymlinks: %v", err)
+	}
+	mustWrite(t, filepath.Join(real, "README.md"), []byte("# hi\n"))
+	cssPath := filepath.Join(real, ".mdv.css")
+	mustWrite(t, cssPath, []byte(".markdown-body{color:hotpink}"))
+
+	srv := New(Config{Root: real, Quiet: true, Theme: "auto", CustomCSS: cssPath, WatchMode: "poll"})
+
+	rec := do(srv, "GET", "/__mdv/custom.css")
+	if rec.Code != 200 {
+		t.Fatalf("custom.css = %d, want 200", rec.Code)
+	}
+	if ct := rec.Header().Get("Content-Type"); !strings.HasPrefix(ct, "text/css") {
+		t.Errorf("content-type = %q", ct)
+	}
+	if !strings.Contains(rec.Body.String(), "hotpink") {
+		t.Errorf("custom.css body not served: %q", rec.Body.String())
+	}
+
+	for _, target := range []string{"/", "/README.md"} {
+		rec := do(srv, "GET", target)
+		if !strings.Contains(rec.Body.String(), `href="/__mdv/custom.css"`) {
+			t.Errorf("%s does not link custom.css", target)
+		}
+	}
+}
+
+func TestCustomCSSAbsentIs404(t *testing.T) {
+	srv, _ := newTestServer(t)
+	rec := do(srv, "GET", "/__mdv/custom.css")
+	if rec.Code != 404 {
+		t.Errorf("custom.css without config = %d, want 404", rec.Code)
+	}
+}
+
+// Both served shells expose the theme toggle button.
+func TestThemeToggleRendered(t *testing.T) {
+	srv, _ := newTestServer(t)
+	for _, target := range []string{"/", "/README.md"} {
+		rec := do(srv, "GET", target)
+		if !strings.Contains(rec.Body.String(), `id="theme-toggle"`) {
+			t.Errorf("%s missing theme toggle button", target)
+		}
+	}
+}
+
 // SVG static files get a sandbox CSP (spec §8.6).
 func TestSVGSandbox(t *testing.T) {
 	srv, root := newTestServer(t)

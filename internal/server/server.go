@@ -41,6 +41,7 @@ type Config struct {
 	Root      string
 	Quiet     bool
 	Theme     string // auto|light|dark
+	CustomCSS string // absolute path to a user stylesheet, or "" for none
 	WatchMode string // fsnotify|poll
 	Logger    *log.Logger
 }
@@ -51,6 +52,7 @@ type Server struct {
 	renderer  *render.Renderer
 	quiet     bool
 	theme     string
+	customCSS string
 	watchMode string
 	logger    *log.Logger
 	shellTmpl *template.Template
@@ -67,6 +69,7 @@ func New(cfg Config) *Server {
 		renderer:  render.New(),
 		quiet:     cfg.Quiet,
 		theme:     cfg.Theme,
+		customCSS: cfg.CustomCSS,
 		watchMode: cfg.WatchMode,
 		logger:    logger,
 		shellTmpl: template.Must(template.New("shell").Parse(shellHTML)),
@@ -88,6 +91,8 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		s.handleFragment(w, r)
 	case path == "/__mdv/events":
 		s.handleEvents(w, r)
+	case path == "/__mdv/custom.css":
+		s.handleCustomCSS(w, r)
 	case strings.HasPrefix(path, "/__mdv/assets/"):
 		s.handleAsset(w, r)
 	case path == "/":
@@ -215,6 +220,25 @@ func (s *Server) handleFragment(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// handleCustomCSS serves the user-supplied stylesheet resolved at startup.
+// The path is fixed (not request-controlled), so no traversal check applies.
+func (s *Server) handleCustomCSS(w http.ResponseWriter, r *http.Request) {
+	if s.customCSS == "" {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+	f, err := os.Open(s.customCSS)
+	if err != nil {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+	defer f.Close()
+	w.Header().Set("Content-Type", "text/css; charset=utf-8")
+	// The file can change between reloads; never cache it.
+	w.Header().Set("Cache-Control", "no-store")
+	_, _ = io.Copy(w, f)
+}
+
 func (s *Server) handleAsset(w http.ResponseWriter, r *http.Request) {
 	name := strings.TrimPrefix(r.URL.Path, "/__mdv/assets/")
 	ct := assets.ContentType(name)
@@ -234,17 +258,19 @@ func (s *Server) handleAsset(w http.ResponseWriter, r *http.Request) {
 }
 
 type shellData struct {
-	Title string
-	Path  string
-	Theme string
+	Title     string
+	Path      string
+	Theme     string
+	CustomCSS bool
 }
 
 func (s *Server) serveShell(w http.ResponseWriter, rel string) {
 	base := filepath.Base(rel)
 	data := shellData{
-		Title: strings.TrimSuffix(base, filepath.Ext(base)),
-		Path:  rel,
-		Theme: s.theme,
+		Title:     strings.TrimSuffix(base, filepath.Ext(base)),
+		Path:      rel,
+		Theme:     s.theme,
+		CustomCSS: s.customCSS != "",
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Content-Security-Policy", contentSecurityPolicy)
@@ -263,8 +289,10 @@ const shellHTML = `<!doctype html>
 <link rel="stylesheet" href="/__mdv/assets/mdv.css">
 <link rel="stylesheet" href="/__mdv/assets/chroma-light.css">
 <link rel="stylesheet" href="/__mdv/assets/chroma-dark.css">
-</head>
+{{if .CustomCSS}}<link rel="stylesheet" href="/__mdv/custom.css">
+{{end}}</head>
 <body data-path="{{.Path}}" data-theme="{{.Theme}}">
+<button class="mdv-theme-toggle" id="theme-toggle" type="button" aria-label="テーマ切り替え" title="テーマ切り替え"></button>
 <div class="mdv-shell">
 <nav class="mdv-toc hidden" id="toc"></nav>
 <main class="mdv-main"><div class="markdown-body" id="doc"></div></main>

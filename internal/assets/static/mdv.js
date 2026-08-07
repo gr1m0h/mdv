@@ -11,28 +11,80 @@
   var docEl = document.getElementById("doc");
   var tocEl = document.getElementById("toc");
   var statusEl = document.getElementById("status");
+  var toggleEl = document.getElementById("theme-toggle");
 
   var mermaidLoaded = false;
   var statusTimer = null;
 
   // ---- theme ----
-  function resolveTheme() {
-    if (themePref === "light" || themePref === "dark") return themePref;
+  // Precedence: an explicit in-browser choice (localStorage) wins over the
+  // server default (MDV_THEME / --theme); "auto" falls back to the OS setting.
+  var THEME_KEY = "mdv-theme";
+
+  function storedTheme() {
+    try {
+      var v = localStorage.getItem(THEME_KEY);
+      return v === "light" || v === "dark" ? v : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function storeTheme(t) {
+    try {
+      localStorage.setItem(THEME_KEY, t);
+    } catch (e) {
+      /* private mode / disabled storage: fall back to session-only */
+    }
+  }
+
+  function systemTheme() {
     return window.matchMedia &&
       window.matchMedia("(prefers-color-scheme: dark)").matches
       ? "dark"
       : "light";
   }
 
+  function resolveTheme() {
+    var stored = storedTheme();
+    if (stored) return stored;
+    if (themePref === "light" || themePref === "dark") return themePref;
+    return systemTheme();
+  }
+
+  function updateToggle() {
+    if (!toggleEl) return;
+    var next = resolveTheme() === "dark" ? "light" : "dark";
+    // Show the icon of the mode the button switches to.
+    toggleEl.textContent = next === "dark" ? "🌙" : "☀️";
+    toggleEl.setAttribute(
+      "aria-label",
+      next === "dark" ? "ダークモードに切り替え" : "ライトモードに切り替え"
+    );
+    toggleEl.title = toggleEl.getAttribute("aria-label");
+  }
+
   function applyTheme() {
     document.documentElement.setAttribute("data-theme", resolveTheme());
+    updateToggle();
   }
 
   applyTheme();
-  if (window.matchMedia && themePref === "auto") {
+
+  if (toggleEl) {
+    toggleEl.addEventListener("click", function () {
+      storeTheme(resolveTheme() === "dark" ? "light" : "dark");
+      applyTheme();
+      if (mermaidLoaded) renderMermaid();
+    });
+  }
+
+  // Follow the OS only while no explicit choice is stored.
+  if (window.matchMedia) {
     window
       .matchMedia("(prefers-color-scheme: dark)")
       .addEventListener("change", function () {
+        if (storedTheme()) return;
         applyTheme();
         if (mermaidLoaded) renderMermaid();
       });

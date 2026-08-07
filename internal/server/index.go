@@ -16,9 +16,10 @@ type indexEntry struct {
 }
 
 type indexData struct {
-	Root    string
-	Theme   string
-	Entries []indexEntry
+	Root      string
+	Theme     string
+	CustomCSS bool
+	Entries   []indexEntry
 }
 
 // handleIndex renders a listing of all .md files under the root (spec §5).
@@ -46,7 +47,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	})
 	sort.Slice(entries, func(i, j int) bool { return entries[i].Path < entries[j].Path })
 
-	data := indexData{Root: s.root, Theme: s.theme, Entries: entries}
+	data := indexData{Root: s.root, Theme: s.theme, CustomCSS: s.customCSS != "", Entries: entries}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Content-Security-Policy", contentSecurityPolicy)
 	if err := indexTmpl.Execute(w, data); err != nil {
@@ -62,8 +63,10 @@ const indexHTML = `<!doctype html>
 <title>{{.Root}}</title>
 <link rel="icon" href="/__mdv/assets/favicon.svg">
 <link rel="stylesheet" href="/__mdv/assets/mdv.css">
-</head>
+{{if .CustomCSS}}<link rel="stylesheet" href="/__mdv/custom.css">
+{{end}}</head>
 <body data-theme="{{.Theme}}">
+<button class="mdv-theme-toggle" id="theme-toggle" type="button" aria-label="テーマ切り替え" title="テーマ切り替え"></button>
 <div class="mdv-index">
 <h1>{{.Root}}</h1>
 {{if .Entries}}

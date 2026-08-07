@@ -1,6 +1,8 @@
 /* mdv layout, markdown body, TOC and GitHub Alerts.
-   Theming is driven by the [data-theme="light|dark"] attribute on <html>,
-   set by mdv.js (resolving MDV_THEME=auto to the system preference). */
+   Theming is driven by the [data-theme="light|dark"] attribute on <html>, set
+   by mdv.js from (in order) a stored in-browser choice, the server default, or
+   the OS preference. Colors are CSS variables so custom CSS can re-skin both
+   themes by overriding the tokens. */
 
 :root {
   --mdv-max-width: 900px;
@@ -13,21 +15,29 @@
   --fg-muted: #59636e;
   --bg: #ffffff;
   --bg-inset: #f6f8fa;
+  --bg-elevated: #ffffff;
   --border: #d1d9e0;
+  --border-muted: #e4e8ec;
   --link: #0969da;
   --code-bg: rgba(129, 139, 152, 0.12);
+  --shadow: 0 1px 3px rgba(31, 35, 40, 0.12), 0 1px 2px rgba(31, 35, 40, 0.24);
 }
 [data-theme="dark"] {
   --fg: #e6edf3;
   --fg-muted: #9198a1;
   --bg: #0d1117;
   --bg-inset: #161b22;
+  --bg-elevated: #161b22;
   --border: #30363d;
+  --border-muted: #21262d;
   --link: #4493f8;
   --code-bg: rgba(110, 118, 129, 0.4);
+  --shadow: 0 1px 3px rgba(1, 4, 9, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.02);
 }
 
 * { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
 
 html, body {
   margin: 0;
@@ -37,10 +47,14 @@ html, body {
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans",
-    Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN",
+    "Hiragino Sans", "Noto Sans JP", "Noto Sans", Meiryo, Helvetica, Arial, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji";
   font-size: 16px;
-  line-height: 1.6;
+  line-height: 1.75;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
 }
 
 /* ---- layout ---- */
@@ -85,22 +99,43 @@ body {
 }
 
 /* ---- markdown body ---- */
+.markdown-body { word-wrap: break-word; }
+.markdown-body > *:first-child { margin-top: 0; }
+.markdown-body > *:last-child { margin-bottom: 0; }
+
 .markdown-body h1, .markdown-body h2, .markdown-body h3,
 .markdown-body h4, .markdown-body h5, .markdown-body h6 {
-  margin: 24px 0 16px;
+  margin: 32px 0 16px;
   font-weight: 600;
   line-height: 1.25;
   scroll-margin-top: 24px;
+  letter-spacing: -0.01em;
 }
-.markdown-body h1 { font-size: 2em; padding-bottom: .3em; border-bottom: 1px solid var(--border); }
-.markdown-body h2 { font-size: 1.5em; padding-bottom: .3em; border-bottom: 1px solid var(--border); }
-.markdown-body h3 { font-size: 1.25em; }
+.markdown-body h1 { font-size: 1.9em; padding-bottom: .3em; border-bottom: 1px solid var(--border); }
+.markdown-body h2 { font-size: 1.45em; padding-bottom: .3em; border-bottom: 1px solid var(--border-muted); }
+.markdown-body h3 { font-size: 1.2em; }
 .markdown-body h4 { font-size: 1em; }
+.markdown-body h5 { font-size: .9em; }
+.markdown-body h6 { font-size: .85em; color: var(--fg-muted); }
 .markdown-body p, .markdown-body ul, .markdown-body ol, .markdown-body blockquote,
-.markdown-body table, .markdown-body pre { margin: 0 0 16px; }
+.markdown-body table, .markdown-body pre, .markdown-body dl { margin: 0 0 16px; }
 .markdown-body a { color: var(--link); text-decoration: none; }
 .markdown-body a:hover { text-decoration: underline; }
-.markdown-body img { max-width: 100%; }
+.markdown-body img { max-width: 100%; border-radius: 6px; }
+.markdown-body strong { font-weight: 600; }
+
+.markdown-body ul, .markdown-body ol { padding-left: 2em; }
+.markdown-body li { margin: .3em 0; }
+.markdown-body li > p { margin: .3em 0; }
+.markdown-body ul ul, .markdown-body ul ol,
+.markdown-body ol ol, .markdown-body ol ul { margin: .25em 0; }
+
+.markdown-body hr {
+  height: 1px;
+  border: 0;
+  margin: 32px 0;
+  background: var(--border);
+}
 
 .markdown-body code {
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
@@ -112,13 +147,15 @@ body {
 .markdown-body pre {
   padding: 16px;
   overflow: auto;
-  border-radius: 6px;
+  border-radius: 8px;
   background: var(--bg-inset);
+  border: 1px solid var(--border-muted);
+  line-height: 1.5;
 }
 .markdown-body pre code {
   background: transparent;
   padding: 0;
-  font-size: 100%;
+  font-size: 90%;
 }
 
 .markdown-body table {
@@ -127,18 +164,22 @@ body {
   width: max-content;
   max-width: 100%;
   overflow: auto;
+  border-radius: 8px;
 }
 .markdown-body th, .markdown-body td {
   border: 1px solid var(--border);
-  padding: 6px 13px;
+  padding: 8px 14px;
 }
+.markdown-body th { background: var(--bg-inset); font-weight: 600; }
 .markdown-body tr:nth-child(2n) { background: var(--bg-inset); }
 
 .markdown-body blockquote {
-  padding: 0 1em;
+  padding: .4em 1em;
   color: var(--fg-muted);
   border-left: .25em solid var(--border);
 }
+.markdown-body blockquote > *:first-child { margin-top: 0; }
+.markdown-body blockquote > *:last-child { margin-bottom: 0; }
 
 /* ---- GitHub Alerts ---- */
 .markdown-body blockquote.alert {
@@ -169,6 +210,29 @@ body {
 
 /* ---- mermaid ---- */
 .mermaid { margin: 0 0 16px; text-align: center; }
+
+/* ---- theme toggle ---- */
+.mdv-theme-toggle {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 10;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-elevated);
+  color: var(--fg);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  transition: transform .15s ease, border-color .15s ease;
+}
+.mdv-theme-toggle:hover { transform: scale(1.08); border-color: var(--link); }
+.mdv-theme-toggle:active { transform: scale(0.96); }
+.mdv-theme-toggle:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
 
 /* ---- status bar ---- */
 .mdv-status {

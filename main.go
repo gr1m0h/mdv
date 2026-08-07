@@ -47,6 +47,7 @@ type options struct {
 	quiet     bool
 	daemon    bool
 	theme     string
+	css       string
 	watchMode string
 	path      string
 }
@@ -113,10 +114,13 @@ func run(args []string, stdout, stderr io.Writer, sig <-chan os.Signal) int {
 		ln, port = l, p
 	}
 
+	customCSS := resolveCustomCSS(opts.css, root, stderr)
+
 	srv := server.New(server.Config{
 		Root:      root,
 		Quiet:     opts.quiet,
 		Theme:     opts.theme,
+		CustomCSS: customCSS,
 		WatchMode: opts.watchMode,
 		Logger:    logger,
 	})
@@ -186,6 +190,35 @@ func resolveRoot(path string) (root, openPath string, err error) {
 		return real, "/", nil
 	}
 	return real, "/" + file, nil
+}
+
+// defaultCustomCSS is the conventional custom stylesheet auto-loaded from the
+// served root when neither --css nor MDV_CSS is set.
+const defaultCustomCSS = ".mdv.css"
+
+// resolveCustomCSS picks the custom stylesheet to serve. An explicit --css /
+// MDV_CSS wins (warning if it is missing); otherwise .mdv.css in the root is
+// auto-loaded when present. It returns the absolute path, or "" for none.
+func resolveCustomCSS(explicit, root string, stderr io.Writer) string {
+	if explicit != "" {
+		abs, err := filepath.Abs(explicit)
+		if err != nil {
+			fmt.Fprintf(stderr, "mdv: WARNING: --css %s: %v\n", explicit, err)
+			return ""
+		}
+		fi, err := os.Stat(abs)
+		if err != nil || fi.IsDir() {
+			fmt.Fprintf(stderr, "mdv: WARNING: custom CSS not found: %s\n", explicit)
+			return ""
+		}
+		return abs
+	}
+
+	candidate := filepath.Join(root, defaultCustomCSS)
+	if fi, err := os.Stat(candidate); err == nil && !fi.IsDir() {
+		return candidate
+	}
+	return ""
 }
 
 // listen binds host:port, incrementing the port up to maxPortTries times when

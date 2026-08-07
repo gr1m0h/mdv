@@ -22,6 +22,13 @@ Requires Go 1.25 or newer.
 go install github.com/gr1m0h/mdv@latest
 ```
 
+Or via [mise](https://mise.jdx.dev):
+
+```bash
+mise use -g go:github.com/gr1m0h/mdv@latest   # build from source
+mise use -g ubi:gr1m0h/mdv                    # prebuilt binary from GitHub Releases
+```
+
 ## Usage
 
 ```bash
@@ -30,21 +37,50 @@ mdv README.md       # open a file (the served root is its parent directory)
 mdv docs/           # serve a directory as the root and show its listing
 ```
 
+By default the server runs in the **foreground** — press `Ctrl-C` to stop it.
+
+### Background servers
+
+Use `-d` to detach and return to the shell, then manage running servers with
+`mdv ls` and `mdv stop`:
+
+```bash
+mdv -d README.md        # start in the background; prints the URL, PID and port
+mdv ls                  # list running background servers
+mdv stop --port 4649    # stop one by port
+mdv stop --all          # stop all
+mdv stop                # stop the only one (errors if several are running)
+```
+
+Each background server binds its own port (4649, 4650, …) and is tracked in a
+per-instance record under `MDV_STATE_DIR` (default: the user cache dir). `mdv
+stop` only terminates servers mdv itself started — it never kills an unrelated
+process that happens to hold the port. Background mode is POSIX-only (Linux and
+macOS); on Windows, run in the foreground.
+
 ### Flags
 
 | Short | Long        | Default     | Description                                           |
 | ----- | ----------- | ----------- | ----------------------------------------------------- |
 | `-p`  | `--port`    | `4649`      | Listen port (+1, up to 20 times, if the port is busy) |
 |       | `--host`    | `127.0.0.1` | Bind address                                          |
+| `-d`  | `--daemon`  |             | Run in the background and return to the shell         |
 | `-n`  | `--no-open` |             | Do not open the browser automatically                 |
 | `-q`  | `--quiet`   |             | Suppress access logs                                  |
 | `-h`  | `--help`    |             | Show help                                             |
 | `-V`  | `--version` |             | Show version                                          |
 
+### Subcommands
+
+| Command                     | Description                          |
+| --------------------------- | ------------------------------------ |
+| `mdv stop [--port N \| --all]` | Stop background server(s)         |
+| `mdv ls` (alias `status`)   | List running background servers      |
+
 ### Environment variables
 
 `MDV_PORT` / `MDV_HOST` / `MDV_BROWSER` / `MDV_WATCH` (`fsnotify`\|`poll`) /
-`MDV_THEME` (`auto`\|`light`\|`dark`) / `NO_COLOR`
+`MDV_THEME` (`auto`\|`light`\|`dark`) / `MDV_STATE_DIR` / `NO_COLOR`
 (precedence: flag > environment variable > default)
 
 ## Development
@@ -69,6 +105,8 @@ mise run vendor-mermaid   # fetch the real mermaid bundle (see note below)
   fallback
 - `internal/assets` — static assets embedded via `go:embed`
 - `internal/browser` — per-OS browser launching
+- `main` / `daemon.go` — CLI, flag parsing, and background-server management
+  (detach via listener-fd inheritance, instance registry, `stop`/`ls`)
 
 > **Important**: `internal/assets/static/mermaid.min.js` is committed as a
 > placeholder stub. Because `go install` embeds whatever is committed, Mermaid

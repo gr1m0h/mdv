@@ -45,12 +45,23 @@ type options struct {
 	host      string
 	noOpen    bool
 	quiet     bool
+	daemon    bool
 	theme     string
 	watchMode string
 	path      string
 }
 
 func run(args []string, stdout, stderr io.Writer, sig <-chan os.Signal) int {
+	// Subcommands for managing background servers.
+	if len(args) > 0 {
+		switch args[0] {
+		case "stop":
+			return cmdStop(args[1:], stdout, stderr)
+		case "ls", "status":
+			return cmdList(stdout, stderr)
+		}
+	}
+
 	opts, showHelp, showVersion, err := parseArgs(args, stderr)
 	if err != nil {
 		fmt.Fprintf(stderr, "mdv: %v\n", err)
@@ -78,10 +89,28 @@ func run(args []string, stdout, stderr io.Writer, sig <-chan os.Signal) int {
 		fmt.Fprintf(stderr, "mdv: WARNING: %s 以下を閲覧できます\n", root)
 	}
 
-	ln, port, err := listen(opts.host, opts.port)
-	if err != nil {
-		fmt.Fprintf(stderr, "mdv: %v\n", err)
-		return 1
+	if opts.daemon {
+		return spawnDaemon(opts, root, openPath, stdout, stderr)
+	}
+
+	// A backgrounded child inherits its listener fd from the parent; otherwise
+	// bind a fresh one.
+	var ln net.Listener
+	var port int
+	if inherited, ok, ierr := inheritedListener(); ok {
+		if ierr != nil {
+			fmt.Fprintf(stderr, "mdv: %v\n", ierr)
+			return 1
+		}
+		ln = inherited
+		port = opts.port
+	} else {
+		l, p, lerr := listen(opts.host, opts.port)
+		if lerr != nil {
+			fmt.Fprintf(stderr, "mdv: %v\n", lerr)
+			return 1
+		}
+		ln, port = l, p
 	}
 
 	srv := server.New(server.Config{
@@ -95,6 +124,11 @@ func run(args []string, stdout, stderr io.Writer, sig <-chan os.Signal) int {
 	httpSrv := &http.Server{Handler: srv}
 
 	url := fmt.Sprintf("http://%s:%d%s", opts.host, port, openPath)
+
+	// When running as a background child, keep the instance registry in sync.
+	cleanup := registerDaemonInstance(root, opts.host, port, url)
+	defer cleanup()
+
 	fmt.Fprintf(stderr, "mdv: serving %s\n", root)
 	fmt.Fprintf(stderr, "mdv: %s  (Ctrl-C to stop)\n", url)
 

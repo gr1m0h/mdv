@@ -40,6 +40,7 @@ func parseArgs(args []string, stderr io.Writer) (opts options, help, ver bool, e
 		hostFlag                string
 		noOpenLong, noOpenShort bool
 		quietLong, quietShort   bool
+		daemonLong, daemonShort bool
 		helpLong, helpShort     bool
 		verLong, verShort       bool
 	)
@@ -50,6 +51,8 @@ func parseArgs(args []string, stderr io.Writer) (opts options, help, ver bool, e
 	fs.BoolVar(&noOpenShort, "n", false, "do not open the browser (shorthand)")
 	fs.BoolVar(&quietLong, "quiet", false, "suppress access logs")
 	fs.BoolVar(&quietShort, "q", false, "suppress access logs (shorthand)")
+	fs.BoolVar(&daemonLong, "daemon", false, "run in the background and return")
+	fs.BoolVar(&daemonShort, "d", false, "run in the background (shorthand)")
 	fs.BoolVar(&helpLong, "help", false, "show help")
 	fs.BoolVar(&helpShort, "h", false, "show help (shorthand)")
 	fs.BoolVar(&verLong, "version", false, "show version")
@@ -72,6 +75,7 @@ func parseArgs(args []string, stderr io.Writer) (opts options, help, ver bool, e
 		host:      hostFlag,
 		noOpen:    noOpenLong || noOpenShort,
 		quiet:     quietLong || quietShort,
+		daemon:    daemonLong || daemonShort,
 		theme:     envTheme,
 		watchMode: envWatch,
 		path:      ".",
@@ -87,7 +91,9 @@ func printUsage(w io.Writer) {
 	fmt.Fprint(w, `mdv — render Markdown in the browser
 
 Usage:
-  mdv [OPTIONS] [PATH]
+  mdv [OPTIONS] [PATH]      start a server for PATH (foreground)
+  mdv stop [--port N|--all] stop background server(s)
+  mdv ls                    list background servers
 
 Arguments:
   PATH            .md file or directory (default ".")
@@ -95,6 +101,7 @@ Arguments:
 Options:
   -p, --port int  listen port (default 4649; +1 up to 20 times if busy)
       --host str  bind address (default "127.0.0.1")
+  -d, --daemon    run in the background and return to the shell
   -n, --no-open   do not open the browser
   -q, --quiet     suppress access logs
   -h, --help      show this help and exit
@@ -102,6 +109,6 @@ Options:
 
 Environment:
   MDV_PORT, MDV_HOST, MDV_BROWSER, MDV_WATCH (fsnotify|poll),
-  MDV_THEME (auto|light|dark), NO_COLOR
+  MDV_THEME (auto|light|dark), MDV_STATE_DIR, NO_COLOR
 `)
 }

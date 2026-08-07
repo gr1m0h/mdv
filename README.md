@@ -9,6 +9,10 @@ sent anywhere external**.
 - Open a formatted view in the browser with a single command (`mdv README.md`)
 - Mermaid diagrams, GitHub Alerts (`> [!NOTE]` etc.), a table of contents, and
   syntax highlighting
+- Light / dark theme with an in-browser toggle (remembered per browser); follows
+  the OS setting in `auto` mode
+- Bring your own CSS: auto-loads `.mdv.css` from the served root, or pass a file
+  with `--css`
 - Live reload on save — including the Vim/Neovim "write temp + rename" pattern
 - Single binary, no runtime dependencies: all assets are embedded via `go:embed`
   and the tool works fully offline
@@ -60,27 +64,67 @@ macOS); on Windows, run in the foreground.
 
 ### Flags
 
-| Short | Long        | Default     | Description                                           |
-| ----- | ----------- | ----------- | ----------------------------------------------------- |
-| `-p`  | `--port`    | `4649`      | Listen port (+1, up to 20 times, if the port is busy) |
-|       | `--host`    | `127.0.0.1` | Bind address                                          |
-| `-d`  | `--daemon`  |             | Run in the background and return to the shell         |
-| `-n`  | `--no-open` |             | Do not open the browser automatically                 |
-| `-q`  | `--quiet`   |             | Suppress access logs                                  |
-| `-h`  | `--help`    |             | Show help                                             |
-| `-V`  | `--version` |             | Show version                                          |
+| Short | Long        | Default     | Description                                            |
+| ----- | ----------- | ----------- | ------------------------------------------------------ |
+| `-p`  | `--port`    | `4649`      | Listen port (+1, up to 20 times, if the port is busy)  |
+|       | `--host`    | `127.0.0.1` | Bind address                                           |
+| `-t`  | `--theme`   | `auto`      | Color theme: `auto` \| `light` \| `dark`               |
+| `-c`  | `--css`     |             | Path to a custom CSS file (else auto-loads `.mdv.css`) |
+| `-d`  | `--daemon`  |             | Run in the background and return to the shell          |
+| `-n`  | `--no-open` |             | Do not open the browser automatically                  |
+| `-q`  | `--quiet`   |             | Suppress access logs                                   |
+| `-h`  | `--help`    |             | Show help                                              |
+| `-V`  | `--version` |             | Show version                                           |
 
 ### Subcommands
 
-| Command                     | Description                          |
-| --------------------------- | ------------------------------------ |
-| `mdv stop [--port N \| --all]` | Stop background server(s)         |
-| `mdv ls` (alias `status`)   | List running background servers      |
+| Command                        | Description                     |
+| ------------------------------ | ------------------------------- |
+| `mdv stop [--port N \| --all]` | Stop background server(s)       |
+| `mdv ls` (alias `status`)      | List running background servers |
+
+### Theming
+
+Set the initial theme with `--theme`/`MDV_THEME` (`auto` follows the OS). In the
+browser, the toggle button in the top-right switches between light and dark; that
+choice is stored per browser (`localStorage`) and overrides the initial theme
+until you clear it. `auto` keeps following the OS until you pick one.
+
+### Custom CSS
+
+Your own stylesheet loads **after** the built-in styles, so your rules win. mdv
+resolves it in this order: `--css`/`-c` → `MDV_CSS` → `.mdv.css` in the served
+root (auto-loaded when present).
+
+```bash
+mdv --css ~/mdv-theme.css docs/   # explicit file
+echo '.markdown-body { max-width: 72ch; }' > docs/.mdv.css && mdv docs/  # auto-loaded
+```
+
+Useful hooks:
+
+- `.markdown-body` — the rendered document container
+- `[data-theme="dark"]` / `[data-theme="light"]` on `<html>` — per-theme rules
+- Color tokens are CSS variables (`--fg`, `--bg`, `--link`, `--border`, …); override
+  them to re-skin both themes at once, e.g.:
+
+  ```css
+  [data-theme="dark"] {
+    --bg: #101418;
+    --link: #7aa2f7;
+  }
+  :root {
+    --mdv-max-width: 820px;
+  } /* content column width */
+  ```
+
+The stylesheet is served with `Cache-Control: no-store`, so a browser refresh
+picks up edits immediately.
 
 ### Environment variables
 
 `MDV_PORT` / `MDV_HOST` / `MDV_BROWSER` / `MDV_WATCH` (`fsnotify`\|`poll`) /
-`MDV_THEME` (`auto`\|`light`\|`dark`) / `MDV_STATE_DIR` / `NO_COLOR`
+`MDV_THEME` (`auto`\|`light`\|`dark`) / `MDV_CSS` / `MDV_STATE_DIR`
 (precedence: flag > environment variable > default)
 
 ## Development

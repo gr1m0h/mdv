@@ -1,23 +1,53 @@
 name: release
 
+# Auto-tag & release on merge to main. The next version is derived from the
+# Conventional Commit messages since the last tag (fix -> patch, feat -> minor,
+# BREAKING CHANGE -> major); commits that warrant no release (docs/chore/test
+# only) produce no tag and the release steps are skipped.
+#
+# Tagging and goreleaser run in the SAME job on purpose: a tag pushed with the
+# default GITHUB_TOKEN does NOT trigger a separate tag-triggered workflow
+# (GitHub's recursion guard), so a two-workflow "push tag -> release" split
+# would silently never fire.
 on:
   push:
-    tags: ['v*']
+    branches: [main]
 
 permissions:
   contents: write
 
 jobs:
-  goreleaser:
+  release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Compute next version
+        id: bump
+        uses: mathieudutour/github-tag-action@v6.2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          # Only compute here; the tag is created locally below so goreleaser
+          # sees it on HEAD in the local checkout.
+          dry_run: true
+          # Do not invent a version when no conventional commit qualifies.
+          default_bump: false
+
+      - name: Create & push tag
+        if: steps.bump.outputs.new_tag
+        run: |
+          git tag "${{ steps.bump.outputs.new_tag }}"
+          git push origin "${{ steps.bump.outputs.new_tag }}"
+
       - uses: jdx/mise-action@v2
+        if: steps.bump.outputs.new_tag
         with:
           experimental: true
+
       - name: vendor mermaid bundle
+        if: steps.bump.outputs.new_tag
         run: |
           mise run vendor-mermaid
           # The committed mermaid assets are stubs; vendoring replaces them,
@@ -27,7 +57,9 @@ jobs:
             internal/assets/static/mermaid.min.js \
             internal/assets/static/mermaid.version \
             internal/assets/static/mermaid.LICENSE
+
       - name: goreleaser
+        if: steps.bump.outputs.new_tag
         uses: goreleaser/goreleaser-action@v6
         with:
           version: '~> v2'

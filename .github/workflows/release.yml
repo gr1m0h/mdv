@@ -1,20 +1,25 @@
 name: release
 
-# Auto-tag & release on merge to main. The next version is derived from the
-# Conventional Commit messages since the last tag (fix -> patch, feat -> minor,
-# BREAKING CHANGE -> major); commits that warrant no release (docs/chore/test
-# only) produce no tag and the release steps are skipped.
+# tagpr maintains a "release PR" on every push to main: it tracks the unreleased
+# diff since the last semver tag and, when that PR is merged, tags the merge
+# commit and creates the GitHub Release. The next version is patch by default;
+# add `tagpr:minor` / `tagpr:major` to the release PR to bump minor/major. This
+# does NOT parse commit messages, so squash-merge subjects that aren't
+# Conventional Commits no longer silently skip a release.
 #
-# Tagging and goreleaser run in the SAME job on purpose: a tag pushed with the
-# default GITHUB_TOKEN does NOT trigger a separate tag-triggered workflow
-# (GitHub's recursion guard), so a two-workflow "push tag -> release" split
-# would silently never fire.
+# goreleaser runs in the SAME job, gated on the tag tagpr just created: a tag
+# pushed with the default GITHUB_TOKEN does NOT trigger a separate tag-triggered
+# workflow (GitHub's recursion guard), so co-locating goreleaser here is what
+# makes the release artifacts build. goreleaser uses `release.mode: append` to
+# upload artifacts into the release tagpr already created for the tag.
 on:
   push:
     branches: [main]
 
 permissions:
   contents: write
+  pull-requests: write
+  issues: read
 
 jobs:
   release:
@@ -23,31 +28,21 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false
 
-      - name: Compute next version
-        id: bump
-        uses: mathieudutour/github-tag-action@v6.2
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          # Only compute here; the tag is created locally below so goreleaser
-          # sees it on HEAD in the local checkout.
-          dry_run: true
-          # Do not invent a version when no conventional commit qualifies.
-          default_bump: false
-
-      - name: Create & push tag
-        if: steps.bump.outputs.new_tag
-        run: |
-          git tag "${{ steps.bump.outputs.new_tag }}"
-          git push origin "${{ steps.bump.outputs.new_tag }}"
+      - name: tagpr
+        id: tagpr
+        uses: Songmu/tagpr@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: jdx/mise-action@v2
-        if: steps.bump.outputs.new_tag
+        if: steps.tagpr.outputs.tag
         with:
           experimental: true
 
       - name: vendor mermaid bundle
-        if: steps.bump.outputs.new_tag
+        if: steps.tagpr.outputs.tag
         run: |
           mise run vendor-mermaid
           # The committed mermaid assets are stubs; vendoring replaces them,
@@ -59,7 +54,7 @@ jobs:
             internal/assets/static/mermaid.LICENSE
 
       - name: goreleaser
-        if: steps.bump.outputs.new_tag
+        if: steps.tagpr.outputs.tag
         uses: goreleaser/goreleaser-action@v6
         with:
           version: "~> v2"

@@ -38,3 +38,9 @@ changelog:
       - '^docs:'
       - '^test:'
       - '^chore:'
+
+release:
+  # tagpr creates the GitHub Release when the release PR is merged; goreleaser
+  # then uploads its artifacts into that existing release instead of failing on
+  # a duplicate.
+  mode: append

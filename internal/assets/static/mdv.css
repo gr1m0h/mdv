@@ -77,6 +77,10 @@ body {
   font-size: 13px;
 }
 .mdv-toc.hidden { display: none; }
+
+/* User-collapsed sidebar: hide the TOC and center the content column. */
+.mdv-shell.toc-collapsed .mdv-toc { display: none; }
+.mdv-shell.toc-collapsed .mdv-main { margin: 0 auto; }
 .mdv-toc ul { list-style: none; margin: 0; padding: 0; }
 .mdv-toc li { margin: 2px 0; }
 .mdv-toc a {
@@ -211,11 +215,11 @@ body {
 /* ---- mermaid ---- */
 .mermaid { margin: 0 0 16px; text-align: center; }
 
-/* ---- theme toggle ---- */
-.mdv-theme-toggle {
+/* ---- floating toggles (theme + sidebar) ---- */
+.mdv-theme-toggle,
+.mdv-toc-toggle {
   position: fixed;
   top: 16px;
-  right: 16px;
   z-index: 10;
   width: 38px;
   height: 38px;
@@ -230,9 +234,15 @@ body {
   box-shadow: var(--shadow);
   transition: transform .15s ease, border-color .15s ease;
 }
-.mdv-theme-toggle:hover { transform: scale(1.08); border-color: var(--link); }
-.mdv-theme-toggle:active { transform: scale(0.96); }
-.mdv-theme-toggle:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+.mdv-theme-toggle { right: 16px; }
+.mdv-toc-toggle { left: 16px; }
+.mdv-toc-toggle.hidden { display: none; }
+.mdv-theme-toggle:hover,
+.mdv-toc-toggle:hover { transform: scale(1.08); border-color: var(--link); }
+.mdv-theme-toggle:active,
+.mdv-toc-toggle:active { transform: scale(0.96); }
+.mdv-theme-toggle:focus-visible,
+.mdv-toc-toggle:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
 
 /* ---- status bar ---- */
 .mdv-status {

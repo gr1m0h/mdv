@@ -292,8 +292,9 @@ const shellHTML = `<!doctype html>
 {{if .CustomCSS}}<link rel="stylesheet" href="/__mdv/custom.css">
 {{end}}</head>
 <body data-path="{{.Path}}" data-theme="{{.Theme}}">
+<button class="mdv-toc-toggle hidden" id="toc-toggle" type="button" aria-label="サイドバーを閉じる" title="サイドバーを閉じる" aria-expanded="true">☰</button>
 <button class="mdv-theme-toggle" id="theme-toggle" type="button" aria-label="テーマ切り替え" title="テーマ切り替え"></button>
-<div class="mdv-shell">
+<div class="mdv-shell" id="shell">
 <nav class="mdv-toc hidden" id="toc"></nav>
 <main class="mdv-main"><div class="markdown-body" id="doc"></div></main>
 </div>

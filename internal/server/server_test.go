@@ -74,6 +74,34 @@ func TestHTTPStatus(t *testing.T) {
 	}
 }
 
+func TestAssetCacheControl(t *testing.T) {
+	srv, _ := newTestServer(t)
+	tests := []struct {
+		name   string
+		target string
+		want   string
+	}{
+		// First-party UI assets must revalidate so an upgrade takes effect
+		// immediately instead of leaving stale JS/CSS behind for max-age.
+		{"js no-store", "/__mdv/assets/mdv.js", "no-store"},
+		{"css no-store", "/__mdv/assets/mdv.css", "no-store"},
+		{"chroma no-store", "/__mdv/assets/chroma-dark.css", "no-store"},
+		// The large vendored mermaid bundle is effectively immutable.
+		{"mermaid cached", "/__mdv/assets/mermaid.min.js", "public, max-age=3600"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rec := do(srv, "GET", tt.target)
+			if rec.Code != http.StatusOK {
+				t.Fatalf("GET %s = %d, want 200", tt.target, rec.Code)
+			}
+			if cc := rec.Header().Get("Cache-Control"); cc != tt.want {
+				t.Errorf("cache-control = %q, want %q", cc, tt.want)
+			}
+		})
+	}
+}
+
 func TestFragmentJSON(t *testing.T) {
 	srv, _ := newTestServer(t)
 	rec := do(srv, "GET", "/__mdv/fragment?path=README.md")

@@ -12,6 +12,8 @@
   var tocEl = document.getElementById("toc");
   var statusEl = document.getElementById("status");
   var toggleEl = document.getElementById("theme-toggle");
+  var shellEl = document.getElementById("shell");
+  var tocToggleEl = document.getElementById("toc-toggle");
 
   var mermaidLoaded = false;
   var statusTimer = null;
@@ -106,15 +108,57 @@
     }, 1200);
   }
 
+  // ---- sidebar (TOC) collapse ----
+  // The collapsed choice is remembered per-browser; the toggle button only
+  // appears when the current document actually has a TOC to hide.
+  var TOC_COLLAPSE_KEY = "mdv-toc-collapsed";
+
+  function storedCollapsed() {
+    try {
+      return localStorage.getItem(TOC_COLLAPSE_KEY) === "1";
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function storeCollapsed(collapsed) {
+    try {
+      localStorage.setItem(TOC_COLLAPSE_KEY, collapsed ? "1" : "0");
+    } catch (e) {
+      /* private mode / disabled storage: fall back to session-only */
+    }
+  }
+
+  function applyTocCollapsed(collapsed) {
+    if (shellEl) shellEl.classList.toggle("toc-collapsed", collapsed);
+    if (!tocToggleEl) return;
+    tocToggleEl.textContent = collapsed ? "☰" : "«";
+    tocToggleEl.setAttribute("aria-expanded", collapsed ? "false" : "true");
+    var label = collapsed ? "サイドバーを開く" : "サイドバーを閉じる";
+    tocToggleEl.setAttribute("aria-label", label);
+    tocToggleEl.title = label;
+  }
+
+  if (tocToggleEl) {
+    tocToggleEl.addEventListener("click", function () {
+      var next = !(shellEl && shellEl.classList.contains("toc-collapsed"));
+      storeCollapsed(next);
+      applyTocCollapsed(next);
+    });
+  }
+
   // ---- TOC ----
   function buildTOC(toc) {
     if (!tocEl) return;
     if (!toc || toc.length < 2) {
       tocEl.classList.add("hidden");
       tocEl.innerHTML = "";
+      if (tocToggleEl) tocToggleEl.classList.add("hidden");
       return;
     }
     tocEl.classList.remove("hidden");
+    if (tocToggleEl) tocToggleEl.classList.remove("hidden");
+    applyTocCollapsed(storedCollapsed());
     var ul = document.createElement("ul");
     toc.forEach(function (e) {
       var li = document.createElement("li");

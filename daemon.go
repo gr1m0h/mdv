@@ -141,6 +141,23 @@ func registerDaemonInstance(root, host string, port int, url string) func() {
 	return func() { removeInstance(port) }
 }
 
+// daemonChildArgs builds the argv for the detached child. It must forward every
+// user-facing rendering flag (--theme, --css) so the background server behaves
+// identically to a foreground one; the child re-parses these from scratch.
+func daemonChildArgs(opts options, port int) []string {
+	args := []string{"--host", opts.host, "--port", strconv.Itoa(port), "--no-open"}
+	if opts.theme != "" {
+		args = append(args, "--theme", opts.theme)
+	}
+	if opts.css != "" {
+		args = append(args, "--css", opts.css)
+	}
+	if opts.quiet {
+		args = append(args, "--quiet")
+	}
+	return append(args, opts.path)
+}
+
 // spawnDaemon binds the listener, re-execs mdv detached with the listener fd
 // passed through, records the instance, and returns immediately.
 func spawnDaemon(opts options, root, openPath string, stdout, stderr io.Writer) int {
@@ -181,13 +198,7 @@ func spawnDaemon(opts options, root, openPath string, stdout, stderr io.Writer) 
 	}
 	defer logf.Close()
 
-	childArgs := []string{"--host", opts.host, "--port", strconv.Itoa(port), "--no-open"}
-	if opts.quiet {
-		childArgs = append(childArgs, "--quiet")
-	}
-	childArgs = append(childArgs, opts.path)
-
-	cmd := exec.Command(exe, childArgs...)
+	cmd := exec.Command(exe, daemonChildArgs(opts, port)...)
 	cmd.Env = append(os.Environ(), "MDV_DAEMON=1", "MDV_LISTEN_FD=3")
 	cmd.ExtraFiles = []*os.File{lf}
 	cmd.Stdin = nil

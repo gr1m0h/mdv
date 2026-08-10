@@ -1,0 +1,63 @@
+name: release
+
+# tagpr maintains a "release PR" on every push to main: it tracks the unreleased
+# diff since the last semver tag and, when that PR is merged, tags the merge
+# commit and creates the GitHub Release. The next version is patch by default;
+# add `tagpr:minor` / `tagpr:major` to the release PR to bump minor/major. This
+# does NOT parse commit messages, so squash-merge subjects that aren't
+# Conventional Commits no longer silently skip a release.
+#
+# goreleaser runs in the SAME job, gated on the tag tagpr just created: a tag
+# pushed with the default GITHUB_TOKEN does NOT trigger a separate tag-triggered
+# workflow (GitHub's recursion guard), so co-locating goreleaser here is what
+# makes the release artifacts build. goreleaser uses `release.mode: append` to
+# upload artifacts into the release tagpr already created for the tag.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: tagpr
+        id: tagpr
+        uses: Songmu/tagpr@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: jdx/mise-action@v2
+        if: steps.tagpr.outputs.tag
+        with:
+          experimental: true
+
+      - name: vendor mermaid bundle
+        if: steps.tagpr.outputs.tag
+        run: |
+          mise run vendor-mermaid
+          # The committed mermaid assets are stubs; vendoring replaces them,
+          # which dirties the tree. Hide the change so goreleaser's clean-state
+          # check passes while the real bundle is embedded into the build.
+          git update-index --assume-unchanged \
+            internal/assets/static/mermaid.min.js \
+            internal/assets/static/mermaid.version \
+            internal/assets/static/mermaid.LICENSE
+
+      - name: goreleaser
+        if: steps.tagpr.outputs.tag
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          version: "~> v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

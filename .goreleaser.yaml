@@ -39,17 +39,8 @@ changelog:
       - '^test:'
       - '^chore:'
 
-# Homebrew tap. Requires a separate repo `gr1m0h/homebrew-tap` and a
-# HOMEBREW_TAP_GITHUB_TOKEN secret with write access to it. Remove this block
-# if you do not maintain a tap.
-brews:
-  - name: mdv
-    repository:
-      owner: gr1m0h
-      name: homebrew-tap
-      token: '{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}'
-    homepage: 'https://github.com/gr1m0h/mdv'
-    description: 'Render Markdown in the browser from the CLI, fully offline'
-    license: MIT
-    test: |
-      system "#{bin}/mdv", "--version"
+release:
+  # tagpr creates the GitHub Release when the release PR is merged; goreleaser
+  # then uploads its artifacts into that existing release instead of failing on
+  # a duplicate.
+  mode: append

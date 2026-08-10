@@ -253,7 +253,16 @@ func (s *Server) handleAsset(w http.ResponseWriter, r *http.Request) {
 	}
 	defer f.Close()
 	w.Header().Set("Content-Type", ct)
-	w.Header().Set("Cache-Control", "public, max-age=3600")
+	// First-party UI assets (mdv.js/css, chroma, favicon) must never be served
+	// stale: they change with every mdv upgrade, and a browser that keeps the
+	// old JS/CSS while the shell HTML is fresh renders new markup against old
+	// styles/scripts (e.g. a visible-but-dead sidebar toggle). The vendored
+	// mermaid bundle is large and effectively immutable, so it keeps a cache.
+	if strings.HasPrefix(name, "mermaid") {
+		w.Header().Set("Cache-Control", "public, max-age=3600")
+	} else {
+		w.Header().Set("Cache-Control", "no-store")
+	}
 	_, _ = io.Copy(w, f)
 }
 

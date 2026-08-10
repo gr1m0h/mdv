@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.1.6](https://github.com/gr1m0h/mdv/compare/v0.1.5...v0.1.6) - 2026-08-10
+
+- chore: sync baseline files from gr1m0h/.github by @gr1m0h-baseline[bot] in https://github.com/gr1m0h/mdv/pull/12
+
 ## [v0.1.5](https://github.com/gr1m0h/mdv/compare/v0.1.4...v0.1.5) - 2026-08-10
 
 - Update by @gr1m0h in https://github.com/gr1m0h/mdv/pull/10

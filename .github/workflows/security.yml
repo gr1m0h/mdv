@@ -8,25 +8,25 @@ permissions:
 
 jobs:
   govulncheck:
-    uses: gr1m0h/.github/.github/workflows/govulncheck.yml@a1178109c30b5466d38c2244c31f54610d0d3db0
+    uses: gr1m0h/.github/.github/workflows/govulncheck.yml@e89b742085d31a8a221a4a4780b9e5c259eba649
   osv-scan:
-    uses: gr1m0h/.github/.github/workflows/osv-scanner.yml@a1178109c30b5466d38c2244c31f54610d0d3db0
+    uses: gr1m0h/.github/.github/workflows/osv-scanner.yml@e89b742085d31a8a221a4a4780b9e5c259eba649
     permissions:
       contents: read
       security-events: write
   gitleaks:
-    uses: gr1m0h/.github/.github/workflows/gitleaks.yml@a1178109c30b5466d38c2244c31f54610d0d3db0
+    uses: gr1m0h/.github/.github/workflows/gitleaks.yml@e89b742085d31a8a221a4a4780b9e5c259eba649
   dependency-review:
     if: github.event_name == 'pull_request'
-    uses: gr1m0h/.github/.github/workflows/dependency-review.yml@a1178109c30b5466d38c2244c31f54610d0d3db0
+    uses: gr1m0h/.github/.github/workflows/dependency-review.yml@e89b742085d31a8a221a4a4780b9e5c259eba649
     permissions:
       contents: read
       pull-requests: write
   codeql:
-    uses: gr1m0h/.github/.github/workflows/codeql-go.yml@a1178109c30b5466d38c2244c31f54610d0d3db0
+    uses: gr1m0h/.github/.github/workflows/codeql-go.yml@e89b742085d31a8a221a4a4780b9e5c259eba649
     permissions:
       contents: read
       security-events: write
       actions: read
   actionlint:
-    uses: gr1m0h/.github/.github/workflows/actions-pin-lint.yml@a1178109c30b5466d38c2244c31f54610d0d3db0
+    uses: gr1m0h/.github/.github/workflows/actions-pin-lint.yml@e89b742085d31a8a221a4a4780b9e5c259eba649

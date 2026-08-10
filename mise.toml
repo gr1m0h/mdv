@@ -38,6 +38,7 @@ depends = ["fmt", "vet", "test"]
 
 [tasks.vendor-mermaid]
 description = "Vendor the real mermaid UMD bundle (the committed one is a stub)"
+shell = "bash -c"
 run = '''
 set -uo pipefail
 url="https://cdn.jsdelivr.net/npm/mermaid@${MERMAID_SPEC}/dist/mermaid.min.js"

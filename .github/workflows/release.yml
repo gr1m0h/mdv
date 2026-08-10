@@ -62,7 +62,7 @@ jobs:
         if: steps.bump.outputs.new_tag
         uses: goreleaser/goreleaser-action@v6
         with:
-          version: '~> v2'
+          version: "~> v2"
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

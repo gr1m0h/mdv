@@ -1,8 +1,27 @@
 # mdv
 
-`mdv` renders a Markdown file (or directory) in your browser from the CLI.
-All rendering happens server-side in Go, so **your Markdown content is never
-sent anywhere external**.
+`mdv` is a local, privacy-first Markdown preview server for the CLI: it renders
+a Markdown file (or directory) in your browser, entirely on your machine.
+
+Markdown → HTML conversion happens server-side in Go; the browser only displays
+the generated HTML. (Mermaid diagrams are the one interactive piece that runs
+browser-side JavaScript — served from the embedded bundle, never a CDN.)
+**Your Markdown content is never sent to any external service**, and a strict
+Content-Security-Policy also stops the browser from fetching remote resources
+referenced by a document — images, scripts, frames, fonts — so simply viewing a
+file leaks nothing off your machine.
+
+mdv pairs well with AI-assisted documentation workflows: keep `mdv -d docs/`
+running, let an AI agent (or your editor) write Markdown into the directory,
+and every save shows up in the browser via live reload:
+
+```text
+┌─────────────┐  write/save  ┌──────────────┐    SSE    ┌─────────────┐
+│ AI / editor │ ───────────▶ │ mdv          │ ────────▶ │ browser     │
+│ writes .md  │              │ local server │   reload  │ rendered MD │
+└─────────────┘              │ + watcher    │           └─────────────┘
+                             └──────────────┘
+```
 
 ## Features
 
@@ -16,7 +35,10 @@ sent anywhere external**.
 - Live reload on save — including the Vim/Neovim "write temp + rename" pattern
 - Single binary, no runtime dependencies: all assets are embedded via `go:embed`
   and the tool works fully offline
-- Runs as a standalone process, independent of your editor
+- Private by default: binds to `127.0.0.1`, sanitizes HTML passthrough, and
+  blocks all external resource loads via CSP
+- Runs as a standalone process, independent of your editor; `--no-open` keeps it
+  headless for agents and scripts
 
 ## Install
 
@@ -75,6 +97,12 @@ macOS); on Windows, run in the foreground.
 | `-q`  | `--quiet`   |             | Suppress access logs                                   |
 | `-h`  | `--help`    |             | Show help                                              |
 | `-V`  | `--version` |             | Show version                                           |
+
+> [!NOTE]
+> By default mdv binds to `127.0.0.1`, so the server — and the directory it
+> serves — is reachable only from your own machine. Passing `--host 0.0.0.0`
+> (or any non-loopback address) exposes it to the network: anyone who can reach
+> the port can read every file mdv serves. Only do this on a network you trust.
 
 ### Subcommands
 
@@ -152,20 +180,20 @@ mise run vendor-mermaid   # fetch the real mermaid bundle (see note below)
 - `main` / `daemon.go` — CLI, flag parsing, and background-server management
   (detach via listener-fd inheritance, instance registry, `stop`/`ls`)
 
-> **Important**: `internal/assets/static/mermaid.min.js` is committed as a
-> placeholder stub. Because `go install` embeds whatever is committed, Mermaid
-> diagrams will not render until the real bundle is vendored **and committed**:
+> **Note**: the real Mermaid bundle is vendored and committed at
+> `internal/assets/static/mermaid.min.js` (the pinned version and SHA-256 are
+> recorded in `internal/assets/static/mermaid.version`), so `go install` builds
+> render Mermaid out of the box. To upgrade it, re-vendor and commit:
 >
 > ```bash
 > mise run vendor-mermaid && git add internal/assets/static/mermaid.* && git commit
 > ```
 >
-> The vendoring records the resolved version and SHA-256 in
-> `internal/assets/static/mermaid.version`. Flowchart diagrams have been
-> verified to render under the strict CSP (`script-src 'self'`, no
-> `'unsafe-eval'`); the remaining diagram types (sequence/gantt/state/ER/class)
-> have not been exhaustively checked. If one fails to render with a CSP error,
-> add `'unsafe-eval'` to `script-src` in `server.contentSecurityPolicy`.
+> Flowchart diagrams have been verified to render under the strict CSP
+> (`script-src 'self'`, no `'unsafe-eval'`); the remaining diagram types
+> (sequence/gantt/state/ER/class) have not been exhaustively checked. If one
+> fails to render with a CSP error, add `'unsafe-eval'` to `script-src` in
+> `server.contentSecurityPolicy`.
 
 ## License
 

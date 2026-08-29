@@ -136,6 +136,55 @@ func TestScriptSanitized(t *testing.T) {
 	}
 }
 
+// R-15: HTML passthrough must not smuggle in elements that execute code or
+// pull external resources; the sanitizer strips them all.
+func TestExternalResourceTagsSanitized(t *testing.T) {
+	tests := []struct {
+		name string
+		src  string
+		deny string
+	}{
+		{"iframe", `<iframe src="https://evil.example/"></iframe>`, "<iframe"},
+		{"object", `<object data="https://evil.example/x.swf"></object>`, "<object"},
+		{"embed", `<embed src="https://evil.example/x.swf">`, "<embed"},
+		{"external script", `<script src="https://evil.example/x.js"></script>`, "<script"},
+		{"stylesheet link", `<link rel="stylesheet" href="https://evil.example/x.css">`, "<link"},
+		{"style tag", `<style>body{background:url(https://evil.example/p.png)}</style>`, "<style"},
+		{"base", `<base href="https://evil.example/">`, "<base"},
+		{"meta refresh", `<meta http-equiv="refresh" content="0;url=https://evil.example/">`, "<meta"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			res := render(t, "before\n\n"+tt.src+"\n\nafter\n")
+			if strings.Contains(res.HTML, tt.deny) {
+				t.Errorf("%s should be stripped: %s", tt.deny, res.HTML)
+			}
+		})
+	}
+}
+
+// R-16: inline event handlers and javascript: URLs never survive sanitization.
+func TestScriptableAttributesSanitized(t *testing.T) {
+	tests := []struct {
+		name string
+		src  string
+		deny string
+	}{
+		{"img onerror", `<img src="x" onerror="alert(1)">`, "onerror"},
+		{"a onclick", `<a href="/ok" onclick="alert(1)">x</a>`, "onclick"},
+		{"javascript href", `<a href="javascript:alert(1)">x</a>`, "javascript:"},
+		{"javascript link", `[x](javascript:alert(1))`, "javascript:"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			res := render(t, tt.src+"\n")
+			if strings.Contains(res.HTML, tt.deny) {
+				t.Errorf("%s should be stripped: %s", tt.deny, res.HTML)
+			}
+		})
+	}
+}
+
 // R-13: TOC entries reference ids that exist in the HTML.
 func TestTOCReferencesExist(t *testing.T) {
 	res := renderSample(t)
@@ -152,8 +201,8 @@ func TestTOCReferencesExist(t *testing.T) {
 // R-14: document title comes from the first h1.
 func TestTitleFromH1(t *testing.T) {
 	res := renderSample(t)
-	if res.Title != "mdv 動作確認" {
-		t.Errorf("want title %q, got %q", "mdv 動作確認", res.Title)
+	if res.Title != "mdv Functionality Check" {
+		t.Errorf("want title %q, got %q", "mdv Functionality Check", res.Title)
 	}
 }
 

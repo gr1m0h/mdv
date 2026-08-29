@@ -1,6 +1,6 @@
-# mdv 動作確認
+# mdv Functionality Check
 
-これは mdv のレンダリング確認用サンプルである。
+This is a sample for verifying mdv rendering.
 
 ## Mermaid
 
@@ -11,14 +11,14 @@ flowchart LR
   B -->|no| A
 ```
 
-## テーブル
+## Table
 
-| 言語 | 用途 |
+| Language | Usecase |
 |---|---|
-| Go | サーバ |
-| HCL | インフラ |
+| Go | Server |
+| HCL | Infrastructure |
 
-## コードブロック
+## Code blcok
 
 ```go
 package main
@@ -48,45 +48,45 @@ this is an unknown language and must fall back to plain text
 ## Alerts
 
 > [!NOTE]
-> これは note である。
+> This is Note.
 
 > [!TIP]
-> これは tip である。
+> This is tip.
 
 > [!IMPORTANT]
-> これは important である。
+> This is important.
 
 > [!WARNING]
-> これは warning である。
+> This is warning.
 
 > [!CAUTION]
-> これは caution である。
+> This is caution.
 
 ## リスト
 
-- [x] 完了したタスク
-- [ ] 未完了のタスク
-  - ネストした項目
-    - さらにネスト
+- [x] Completed task
+- [ ] Incomplete task
+  - Nested item
+    - Nested further
 
-脚注のテスト[^1]。
+Footnote test[^1]。
 
-[^1]: これは脚注の内容である。
+[^1]: This is the content of the footnote.
 
-## 生 HTML
+## Raw HTML
 
 <script>alert(1)</script>
 
-これはスクリプトの直後の段落である。
+This is the paragraph immediately following the script.
 
-## 画像
+## Images
 
-![相対パス画像](./image.png)
+![Relative path image](./image.png)
 
-## 深い見出し
+## Deep headings
 
-#### 深い見出し
+#### Deep headings
 
-### 深い見出し
+### Deep headings
 
-### 深い見出し
+### Deep headings

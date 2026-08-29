@@ -32,8 +32,11 @@ var staticContentType = map[string]string{
 	".css": "text/css; charset=utf-8",
 }
 
+// contentSecurityPolicy blocks every external resource: mdv promises that
+// viewing a document leaks nothing off the machine, and that includes the
+// browser fetching remote images referenced from the Markdown (spec §8.4).
 const contentSecurityPolicy = "default-src 'none'; script-src 'self'; " +
-	"style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; " +
+	"style-src 'self' 'unsafe-inline'; img-src 'self' data:; " +
 	"font-src 'self' data:; connect-src 'self';"
 
 // Config configures a Server.

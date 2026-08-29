@@ -27,6 +27,10 @@ func newTestServer(t *testing.T) (*Server, string) {
 	mustWrite(t, filepath.Join(real, "README.md"), sample)
 	mustWrite(t, filepath.Join(real, "image.png"), []byte("\x89PNG\r\n"))
 	mustWrite(t, filepath.Join(real, "secret.exe"), []byte("MZ"))
+	if err := os.Mkdir(filepath.Join(real, "sub"), 0o755); err != nil {
+		t.Fatalf("mkdir sub: %v", err)
+	}
+	mustWrite(t, filepath.Join(real, "sub", "note.md"), []byte("# note\n"))
 
 	srv := New(Config{Root: real, Quiet: true, Theme: "auto", WatchMode: "poll"})
 	return srv, real
@@ -122,7 +126,7 @@ func TestFragmentJSON(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &res); err != nil {
 		t.Fatalf("invalid JSON: %v", err)
 	}
-	if res.Title != "mdv 動作確認" {
+	if res.Title != "mdv Functionality Check" {
 		t.Errorf("title = %q", res.Title)
 	}
 	if !res.HasMermaid {
@@ -142,6 +146,30 @@ func TestShellHasCSP(t *testing.T) {
 	}
 }
 
+// S-8: the CSP must not allow the browser to fetch any external resource.
+// A remote image URL in the Markdown (e.g. a tracking pixel) would otherwise
+// leak the fact — and via the URL, arbitrary data — that a document was viewed.
+func TestCSPBlocksExternalResources(t *testing.T) {
+	srv, _ := newTestServer(t)
+	for _, target := range []string{"/", "/README.md"} {
+		rec := do(srv, "GET", target)
+		csp := rec.Header().Get("Content-Security-Policy")
+		if csp == "" {
+			t.Fatalf("%s: missing CSP header", target)
+		}
+		for _, scheme := range []string{"http:", "https:", "//"} {
+			if strings.Contains(csp, " "+scheme) {
+				t.Errorf("%s: CSP allows external scheme %q: %s", target, scheme, csp)
+			}
+		}
+		for _, directive := range []string{"default-src 'none'", "img-src 'self' data:", "connect-src 'self'"} {
+			if !strings.Contains(csp, directive) {
+				t.Errorf("%s: CSP missing %q: %s", target, directive, csp)
+			}
+		}
+	}
+}
+
 // S-1..S-3: traversal attempts never return /etc/passwd content.
 func TestTraversalBlocked(t *testing.T) {
 	srv, _ := newTestServer(t)
@@ -150,6 +178,16 @@ func TestTraversalBlocked(t *testing.T) {
 		"/__mdv/fragment?path=%2e%2e%2f%2e%2e%2f%2e%2e%2fetc/passwd",
 		"/../../etc/passwd",
 		"/__mdv/assets/../../../etc/passwd",
+		// Double encoding: %252e decodes to the literal "%2e"; it must not be
+		// decoded a second time into a traversal.
+		"/%252e%252e/%252e%252e/etc/passwd",
+		"/__mdv/fragment?path=%252e%252e%252f%252e%252e%252fetc/passwd",
+		// Traversal that dips into an existing subdirectory first.
+		"/sub/../../../../etc/passwd",
+		"/__mdv/fragment?path=sub/../../../../etc/passwd",
+		// Windows-style separators must not be treated as path separators.
+		"/__mdv/fragment?path=..%5c..%5c..%5cetc%5cpasswd",
+		"/..%5c..%5cetc%5cpasswd",
 	}
 	for _, target := range targets {
 		t.Run(target, func(t *testing.T) {
@@ -180,6 +218,31 @@ func TestSymlinkEscape(t *testing.T) {
 	}
 	if strings.Contains(rec.Body.String(), "root:x:") {
 		t.Errorf("leaked /etc/passwd content")
+	}
+}
+
+// S-5: a symlinked directory escaping the root must not open a window onto
+// the rest of the filesystem.
+func TestDirectorySymlinkEscape(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink semantics differ on windows")
+	}
+	srv, root := newTestServer(t)
+	outside := t.TempDir()
+	mustWrite(t, filepath.Join(outside, "secret.md"), []byte("# outside the root\n"))
+	if err := os.Symlink(outside, filepath.Join(root, "linked")); err != nil {
+		t.Skipf("cannot symlink: %v", err)
+	}
+	for _, target := range []string{"/linked/secret.md", "/__mdv/fragment?path=linked/secret.md"} {
+		t.Run(target, func(t *testing.T) {
+			rec := do(srv, "GET", target)
+			if rec.Code != http.StatusForbidden {
+				t.Errorf("want 403, got %d", rec.Code)
+			}
+			if strings.Contains(rec.Body.String(), "outside the root") {
+				t.Errorf("leaked content through directory symlink")
+			}
+		})
 	}
 }
 

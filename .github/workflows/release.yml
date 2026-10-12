@@ -36,7 +36,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: jdx/mise-action@v2
+      - uses: jdx/mise-action@v5
         if: steps.tagpr.outputs.tag
         with:
           experimental: true

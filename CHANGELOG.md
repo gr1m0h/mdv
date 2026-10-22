@@ -1,5 +1,16 @@
 # Changelog
 
+## [v0.1.7](https://github.com/gr1m0h/mdv/compare/v0.1.6...v0.1.7) - 2026-10-22
+
+- fix(security): require Go 1.26.10 for patched X.509 verification by @gr1m0h in https://github.com/gr1m0h/mdv/pull/24
+- Update dependency go to v1.27.3 by @renovate[bot] in https://github.com/gr1m0h/mdv/pull/18
+- ci(security): run security checks only on pull requests by @gr1m0h in https://github.com/gr1m0h/mdv/pull/26
+- Update jdx/mise-action action to v5 by @renovate[bot] in https://github.com/gr1m0h/mdv/pull/22
+- Update goreleaser/goreleaser-action action to v7 by @renovate[bot] in https://github.com/gr1m0h/mdv/pull/21
+- Update actions/checkout action to v7 by @renovate[bot] in https://github.com/gr1m0h/mdv/pull/20
+- Update module github.com/yuin/goldmark to v1.8.6 by @renovate[bot] in https://github.com/gr1m0h/mdv/pull/17
+- chore: sync baseline files from gr1m0h/.github by @gr1m0h-baseline[bot] in https://github.com/gr1m0h/mdv/pull/16
+
 ## [v0.1.6](https://github.com/gr1m0h/mdv/compare/v0.1.5...v0.1.6) - 2026-08-29
 
 - chore: sync baseline files from gr1m0h/.github by @gr1m0h-baseline[bot] in https://github.com/gr1m0h/mdv/pull/12

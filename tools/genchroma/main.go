@@ -9,8 +9,8 @@ import (
 	"regexp"
 	"strings"
 
-	chromahtml "github.com/alecthomas/chroma/v2/formatters/html"
-	"github.com/alecthomas/chroma/v2/styles"
+	chromahtml "github.com/alecthomas/chroma/v3/formatters/html"
+	"github.com/alecthomas/chroma/v3/styles"
 )
 
 // Generates scoped chroma CSS for light and dark themes. Each rule is prefixed

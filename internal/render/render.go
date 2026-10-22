@@ -6,16 +6,13 @@ package render
 import (
 	"bytes"
 
-	chromahtml "github.com/alecthomas/chroma/v2/formatters/html"
-	"github.com/yuin/goldmark"
-	highlighting "github.com/yuin/goldmark-highlighting/v2"
-	"github.com/yuin/goldmark/ast"
-	"github.com/yuin/goldmark/extension"
-	"github.com/yuin/goldmark/parser"
-	"github.com/yuin/goldmark/renderer"
-	ghtml "github.com/yuin/goldmark/renderer/html"
-	"github.com/yuin/goldmark/text"
-	"github.com/yuin/goldmark/util"
+	chromahtml "github.com/alecthomas/chroma/v3/formatters/html"
+	highlighting "github.com/yuin/goldmark-highlighting/v3"
+	"github.com/yuin/goldmark/v2/ast"
+	"github.com/yuin/goldmark/v2/extension"
+	"github.com/yuin/goldmark/v2/parser"
+	ghtml "github.com/yuin/goldmark/v2/renderer/html"
+	"github.com/yuin/goldmark/v2/util"
 )
 
 // Result is the output of a render pass.
@@ -28,58 +25,47 @@ type Result struct {
 
 // Renderer renders Markdown to sanitized HTML.
 type Renderer struct {
-	md goldmark.Markdown
+	parser parser.Parser
+	html   ghtml.Renderer
 }
 
 // New constructs a Renderer with the mdv goldmark configuration (spec §6.1).
 func New() *Renderer {
-	md := goldmark.New(
-		goldmark.WithExtensions(
-			extension.GFM,
-			extension.Footnote,
-			extension.DefinitionList,
-			highlighting.NewHighlighting(
-				highlighting.WithStyle("github"),
-				highlighting.WithFormatOptions(
-					chromahtml.WithClasses(true),
-				),
-			),
-		),
-		goldmark.WithParserOptions(
-			parser.WithAutoHeadingID(),
-			parser.WithASTTransformers(
-				// Priority: alerts before mermaid; both before rendering.
-				util.Prioritized(&alertTransformer{}, 100),
-				util.Prioritized(&mermaidTransformer{}, 200),
-			),
-		),
-		goldmark.WithRendererOptions(
-			ghtml.WithUnsafe(),
+	p := parser.New(
+		parser.WithExtensions(extension.GFMParser, extension.FootnoteParser,
+			extension.DefinitionListParser, highlighting.Parser),
+		parser.WithAutoHeadingID(),
+		parser.WithASTTransformers(
+			// Priority: alerts before mermaid; both before rendering.
+			util.Prioritized[parser.ASTTransformer](&alertTransformer{}, 100),
+			util.Prioritized[parser.ASTTransformer](&mermaidTransformer{}, 150),
 		),
 	)
-	// Register custom node renderers (blockquote/alert, mermaid) with a high
-	// priority so they take precedence over the defaults.
-	md.Renderer().AddOptions(
-		renderer.WithNodeRenderers(
-			util.Prioritized(&alertRenderer{}, 1),
-			util.Prioritized(&mermaidRenderer{}, 1),
-		),
+	h := ghtml.New(
+		ghtml.WithExtensions(extension.GFMHTMLRenderer, extension.FootnoteHTMLRenderer,
+			extension.DefinitionListHTMLRenderer,
+			highlighting.NewHTMLRenderer(highlighting.WithStyle("github"),
+				highlighting.WithFormatterOptions(chromahtml.WithClasses(true)))),
+		ghtml.WithUnsafe(),
+		ghtml.WithNodeRendererDecorator(ast.KindBlockquote, func(next ghtml.NodeRenderer) ghtml.NodeRenderer {
+			return &alertRenderer{next: next}
+		}),
+		ghtml.WithNodeRenderer(kindMermaidBlock, &mermaidRenderer{}),
 	)
-	return &Renderer{md: md}
+	return &Renderer{parser: p, html: h}
 }
 
 // Render parses and renders the given Markdown source.
 func (r *Renderer) Render(source []byte) (*Result, error) {
 	ids := newGithubIDs()
-	pc := parser.NewContext(parser.WithIDs(ids))
-	reader := text.NewReader(source)
-	doc := r.md.Parser().Parse(reader, parser.WithContext(pc))
+	pc := parser.NewContext(parser.WithIDGenerator(ids))
+	doc := r.parser.Parse(source, parser.WithContext(pc))
 
 	toc, title := collectTOC(doc, source)
 	hasMermaid := containsMermaid(doc)
 
 	var buf bytes.Buffer
-	if err := r.md.Renderer().Render(&buf, source, doc); err != nil {
+	if err := r.html.Render(&buf, source, doc); err != nil {
 		return nil, err
 	}
 

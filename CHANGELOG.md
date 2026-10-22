@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.1.8](https://github.com/gr1m0h/mdv/compare/v0.1.7...v0.1.8) - 2026-10-22
+
+- fix: complete Goldmark v2 migration by @renovate[bot] in https://github.com/gr1m0h/mdv/pull/23
+
 ## [v0.1.7](https://github.com/gr1m0h/mdv/compare/v0.1.6...v0.1.7) - 2026-10-22
 
 - fix(security): require Go 1.26.10 for patched X.509 verification by @gr1m0h in https://github.com/gr1m0h/mdv/pull/24

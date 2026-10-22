@@ -36,7 +36,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: jdx/mise-action@v2
+      - uses: jdx/mise-action@v5
         if: steps.tagpr.outputs.tag
         with:
           experimental: true
@@ -55,7 +55,7 @@ jobs:
 
       - name: goreleaser
         if: steps.tagpr.outputs.tag
-        uses: goreleaser/goreleaser-action@v6
+        uses: goreleaser/goreleaser-action@v7
         with:
           version: "~> v2"
           args: release --clean

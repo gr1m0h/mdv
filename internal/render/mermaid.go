@@ -2,13 +2,13 @@ package render
 
 import (
 	"html"
+	"io"
 	"strings"
 
-	"github.com/yuin/goldmark/ast"
-	"github.com/yuin/goldmark/parser"
-	"github.com/yuin/goldmark/renderer"
-	"github.com/yuin/goldmark/text"
-	"github.com/yuin/goldmark/util"
+	"github.com/yuin/goldmark/v2/ast"
+	"github.com/yuin/goldmark/v2/parser"
+	"github.com/yuin/goldmark/v2/renderer"
+	"github.com/yuin/goldmark/v2/text"
 )
 
 // kindMermaidBlock is the AST kind for a converted mermaid fenced code block.
@@ -21,8 +21,8 @@ type mermaidBlock struct {
 
 func (m *mermaidBlock) Kind() ast.NodeKind { return kindMermaidBlock }
 
-func (m *mermaidBlock) Dump(source []byte, level int) {
-	ast.DumpHelper(m, source, level, nil, nil)
+func (m *mermaidBlock) Dump(source []byte) *ast.NodeDump {
+	return ast.NewNodeDump(m, nil)
 }
 
 // mermaidTransformer replaces fenced code blocks whose info string is
@@ -41,49 +41,35 @@ func (t *mermaidTransformer) Transform(doc *ast.Document, reader text.Reader, pc
 		if !entering {
 			return ast.WalkContinue, nil
 		}
-		fcb, ok := n.(*ast.FencedCodeBlock)
-		if !ok {
+		fcb, ok := n.(*ast.CodeBlock)
+		if !ok || fcb.CodeBlockKind != ast.CodeBlockKindFenced {
 			return ast.WalkContinue, nil
 		}
-		if strings.ToLower(string(fcb.Language(source))) != "mermaid" {
+		lang, _ := fcb.Language(source)
+		if strings.ToLower(lang) != "mermaid" {
 			return ast.WalkContinue, nil
 		}
-		mb := &mermaidBlock{code: linesText(fcb, source)}
+		mb := &mermaidBlock{code: fcb.Value.Str(source)}
+		mb.Init(mb)
 		repls = append(repls, repl{parent: n.Parent(), old: n, new: mb})
 		return ast.WalkContinue, nil
 	})
 	for _, r := range repls {
 		if r.parent != nil {
-			r.parent.ReplaceChild(r.parent, r.old, r.new)
+			r.parent.ReplaceChild(r.old, r.new)
 		}
 	}
-}
-
-func linesText(n ast.Node, source []byte) string {
-	var b strings.Builder
-	lines := n.Lines()
-	for i := 0; i < lines.Len(); i++ {
-		seg := lines.At(i)
-		b.Write(seg.Value(source))
-	}
-	return b.String()
 }
 
 // mermaidRenderer renders mermaidBlock nodes as <div class="mermaid">.
 type mermaidRenderer struct{}
 
-func (r *mermaidRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
-	reg.Register(kindMermaidBlock, r.render)
-}
-
-func (r *mermaidRenderer) render(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
+func (r *mermaidRenderer) Render(w io.Writer, source []byte, node ast.Node, entering bool, rc renderer.Context) (ast.WalkStatus, error) {
 	if !entering {
 		return ast.WalkContinue, nil
 	}
 	m := node.(*mermaidBlock)
 	code := strings.TrimRight(m.code, "\n")
-	w.WriteString(`<div class="mermaid">`)
-	w.WriteString(html.EscapeString(code))
-	w.WriteString("</div>\n")
-	return ast.WalkSkipChildren, nil
+	_, err := io.WriteString(w, `<div class="mermaid">`+html.EscapeString(code)+"</div>\n")
+	return ast.WalkSkipChildren, err
 }

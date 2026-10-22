@@ -1,14 +1,15 @@
 package render
 
 import (
+	"io"
 	"regexp"
 	"strings"
 
-	"github.com/yuin/goldmark/ast"
-	"github.com/yuin/goldmark/parser"
-	"github.com/yuin/goldmark/renderer"
-	"github.com/yuin/goldmark/text"
-	"github.com/yuin/goldmark/util"
+	"github.com/yuin/goldmark/v2/ast"
+	"github.com/yuin/goldmark/v2/parser"
+	"github.com/yuin/goldmark/v2/renderer"
+	ghtml "github.com/yuin/goldmark/v2/renderer/html"
+	"github.com/yuin/goldmark/v2/text"
 )
 
 // alertMarker matches a leading GitHub alert marker such as "[!NOTE]".
@@ -47,42 +48,42 @@ func (a *alertTransformer) Transform(doc *ast.Document, reader text.Reader, pc p
 		return ast.WalkContinue, nil
 	})
 	for _, bq := range quotes {
-		transformAlert(bq, source)
+		transformAlert(bq, source, reader.Decoder())
 	}
 }
 
-func transformAlert(bq *ast.Blockquote, source []byte) {
+func transformAlert(bq *ast.Blockquote, source []byte, decoder text.Decoder) {
 	para, ok := bq.FirstChild().(*ast.Paragraph)
 	if !ok {
 		return
 	}
-	lines := para.Lines()
-	if lines.Len() == 0 {
+	lines := para.Source()
+	if len(lines) == 0 {
 		return
 	}
 	// The marker occupies (a prefix of) the paragraph's first source line.
 	// goldmark splits "[!NOTE]" across several inline Text nodes, so we match
 	// against the raw line and then trim inline nodes by source offset.
-	first := lines.At(0)
-	m := alertMarker.FindSubmatch(first.Value(source))
+	first := lines[0]
+	m := alertMarker.FindSubmatch(source[first.Start:first.Stop])
 	if m == nil {
 		return
 	}
 	kind := strings.ToLower(string(m[1]))
-	bq.SetAttributeString(alertAttrKey, []byte(kind))
+	bq.SetAttribute(alertAttrKey, text.NewMultiLineValueFromString(kind, nil))
 
 	markerEnd := first.Start + len(m[0])
-	stripMarkerInlines(para, markerEnd)
+	stripMarkerInlines(para, markerEnd, decoder)
 
 	// Rule 5: if the paragraph is now empty (no image/code either), drop it.
 	if para.ChildCount() == 0 {
-		bq.RemoveChild(bq, para)
+		bq.RemoveChild(para)
 	}
 }
 
 // stripMarkerInlines removes inline Text nodes that fall within [start,markerEnd)
 // of the source, trimming the node that straddles markerEnd.
-func stripMarkerInlines(para *ast.Paragraph, markerEnd int) {
+func stripMarkerInlines(para *ast.Paragraph, markerEnd int, decoder text.Decoder) {
 	var children []ast.Node
 	for c := para.FirstChild(); c != nil; c = c.NextSibling() {
 		children = append(children, c)
@@ -92,55 +93,49 @@ func stripMarkerInlines(para *ast.Paragraph, markerEnd int) {
 		if !ok {
 			return // reached non-text content past the marker
 		}
-		seg := t.Segment
+		if t.Value.IsOwned() {
+			return
+		}
+		seg := t.Value.Index()
 		if seg.Stop <= markerEnd {
-			para.RemoveChild(para, t)
+			para.RemoveChild(t)
 			continue
 		}
 		if seg.Start < markerEnd {
-			t.Segment = text.NewSegment(markerEnd, seg.Stop)
+			t.Value = text.NewSingleLineValueFromIndex(text.NewIndex(markerEnd, seg.Stop), decoder)
 		}
 		return
 	}
 }
 
-func alertKindOf(n ast.Node) string {
-	if v, ok := n.AttributeString(alertAttrKey); ok {
-		if b, ok := v.([]byte); ok {
-			return string(b)
-		}
+func alertKindOf(n ast.Node, source []byte) string {
+	if v, ok := n.Attribute(alertAttrKey); ok {
+		return v.Str(source)
 	}
 	return ""
 }
 
 // alertRenderer renders blockquotes, emitting the alert wrapper when the node
 // was tagged by alertTransformer.
-type alertRenderer struct{}
+type alertRenderer struct{ next ghtml.NodeRenderer }
 
-func (r *alertRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
-	reg.Register(ast.KindBlockquote, r.renderBlockquote)
-}
-
-func (r *alertRenderer) renderBlockquote(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
-	kind := alertKindOf(node)
+func (r *alertRenderer) Render(w io.Writer, source []byte, node ast.Node, entering bool, rc renderer.Context) (ast.WalkStatus, error) {
+	kind := alertKindOf(node, source)
+	var output string
 	if kind == "" {
-		if entering {
-			w.WriteString("<blockquote>\n")
-		} else {
-			w.WriteString("</blockquote>\n")
-		}
-		return ast.WalkContinue, nil
+		return r.next.Render(w, source, node, entering, rc)
 	}
 	meta, ok := alertKinds[kind]
 	if !ok {
 		meta = alertMeta{kind: kind, label: kind}
 	}
 	if entering {
-		w.WriteString(`<blockquote class="alert alert-` + meta.kind + `">` + "\n")
-		w.WriteString(`<div class="alert-title"><span class="alert-icon">` + meta.icon +
-			`</span> ` + meta.label + `</div>` + "\n")
+		output = `<blockquote class="alert alert-` + meta.kind + `">` + "\n" +
+			`<div class="alert-title"><span class="alert-icon">` + meta.icon +
+			`</span> ` + meta.label + `</div>` + "\n"
 	} else {
-		w.WriteString("</blockquote>\n")
+		output = "</blockquote>\n"
 	}
-	return ast.WalkContinue, nil
+	_, err := io.WriteString(w, output)
+	return ast.WalkContinue, err
 }

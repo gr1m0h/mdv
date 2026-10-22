@@ -1,11 +1,10 @@
 package render
 
 import (
-	"strconv"
 	"strings"
 	"unicode"
 
-	"github.com/yuin/goldmark/ast"
+	"github.com/yuin/goldmark/v2/ast"
 )
 
 // TOCEntry is a single entry in the table of contents.
@@ -15,33 +14,21 @@ type TOCEntry struct {
 	Text  string `json:"text"`
 }
 
-// githubIDs implements parser.IDs with GitHub-compatible slugs that preserve
+// githubIDs implements parser.IDGenerator with GitHub-compatible slugs that preserve
 // non-ASCII (e.g. Japanese) characters. See spec §6.4.
-type githubIDs struct {
-	used map[string]bool
-}
+type githubIDs struct{}
 
 func newGithubIDs() *githubIDs {
-	return &githubIDs{used: map[string]bool{}}
+	return &githubIDs{}
 }
 
-// Generate builds a slug from the heading text and de-duplicates it.
+// Generate builds a base slug. Goldmark's IDs handles de-duplication per parse.
 func (g *githubIDs) Generate(value []byte, kind ast.NodeKind) []byte {
 	base := slugify(string(value))
 	if base == "" {
 		base = "section"
 	}
-	candidate := base
-	for i := 1; g.used[candidate]; i++ {
-		candidate = base + "-" + strconv.Itoa(i)
-	}
-	g.used[candidate] = true
-	return []byte(candidate)
-}
-
-// Put registers an explicitly-specified id so later generated ids avoid it.
-func (g *githubIDs) Put(value []byte) {
-	g.used[string(value)] = true
+	return []byte(base)
 }
 
 // slugify implements the algorithm from spec §6.4:
@@ -86,10 +73,8 @@ func collectTOC(doc ast.Node, source []byte) ([]TOCEntry, string) {
 		}
 		if h.Level >= 1 && h.Level <= 4 {
 			id := ""
-			if v, ok := h.AttributeString("id"); ok {
-				if b, ok := v.([]byte); ok {
-					id = string(b)
-				}
+			if v, ok := h.Attribute("id"); ok {
+				id = v.Str(source)
 			}
 			toc = append(toc, TOCEntry{Level: h.Level, ID: id, Text: txt})
 		}
@@ -107,9 +92,7 @@ func headingText(n ast.Node, source []byte) string {
 		}
 		switch t := c.(type) {
 		case *ast.Text:
-			b.Write(t.Segment.Value(source))
-		case *ast.String:
-			b.Write(t.Value)
+			b.Write(t.Value.Bytes(source))
 		case *ast.CodeSpan:
 			b.WriteString(codeSpanText(t, source))
 			return ast.WalkSkipChildren, nil
@@ -120,11 +103,5 @@ func headingText(n ast.Node, source []byte) string {
 }
 
 func codeSpanText(n *ast.CodeSpan, source []byte) string {
-	var b strings.Builder
-	for c := n.FirstChild(); c != nil; c = c.NextSibling() {
-		if t, ok := c.(*ast.Text); ok {
-			b.Write(t.Segment.Value(source))
-		}
-	}
-	return b.String()
+	return n.Value.Str(source)
 }

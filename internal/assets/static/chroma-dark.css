@@ -16,6 +16,7 @@
 [data-theme="dark"] .chroma .kp { color: #79c0ff }
 [data-theme="dark"] .chroma .kr { color: #ff7b72 }
 [data-theme="dark"] .chroma .kt { color: #ff7b72 }
+[data-theme="dark"] .chroma .na { color: #f0883e }
 [data-theme="dark"] .chroma .nc { color: #f0883e; font-weight: bold }
 [data-theme="dark"] .chroma .no { color: #79c0ff; font-weight: bold }
 [data-theme="dark"] .chroma .nd { color: #d2a8ff; font-weight: bold }

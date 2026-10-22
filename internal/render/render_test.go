@@ -221,3 +221,51 @@ func TestFootnote(t *testing.T) {
 		t.Errorf("expected footnote anchors: %s", res.HTML)
 	}
 }
+
+func TestHeadingInlineCodeAndRepeatedRender(t *testing.T) {
+	r := New()
+	for range 2 {
+		res, err := r.Render([]byte("# Use `go test`\n\n# Use `go test`\n"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if res.Title != "Use go test" || len(res.TOC) != 2 {
+			t.Fatalf("unexpected title/TOC: %+v", res)
+		}
+		for i, want := range []string{"use-go-test", "use-go-test-1"} {
+			if res.TOC[i].ID != want || !strings.Contains(res.HTML, `id="`+want+`"`) {
+				t.Errorf("heading %d: want %q, got %+v", i, want, res)
+			}
+		}
+	}
+}
+
+func TestAlertPreservesContent(t *testing.T) {
+	for _, kind := range []string{"NOTE", "TIP", "IMPORTANT", "WARNING", "CAUTION"} {
+		t.Run(kind, func(t *testing.T) {
+			res := render(t, "> [!"+kind+"] same line **bold**\n> next line `code`\n")
+			for _, want := range []string{"alert-" + strings.ToLower(kind), "same line", "<strong>bold</strong>", "next line", "<code>code</code>"} {
+				if !strings.Contains(res.HTML, want) {
+					t.Errorf("missing %q: %s", want, res.HTML)
+				}
+			}
+			if strings.Contains(res.HTML, "[!"+kind+"]") {
+				t.Errorf("marker remains: %s", res.HTML)
+			}
+		})
+	}
+}
+
+func TestPlainBlockquote(t *testing.T) {
+	res := render(t, "> ordinary **quote**\n")
+	if !strings.Contains(res.HTML, "<blockquote>") || !strings.Contains(res.HTML, "<strong>quote</strong>") || strings.Contains(res.HTML, "alert-") {
+		t.Fatalf("unexpected ordinary blockquote: %s", res.HTML)
+	}
+}
+
+func TestMermaidEscapesHTML(t *testing.T) {
+	res := render(t, "```mermaid\n<script>alert(1)</script>\n```\n")
+	if !res.HasMermaid || !strings.Contains(res.HTML, "&lt;script&gt;") || strings.Contains(res.HTML, "<script>") {
+		t.Fatalf("unexpected mermaid HTML: %s", res.HTML)
+	}
+}

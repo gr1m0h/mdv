@@ -39,6 +39,9 @@ const contentSecurityPolicy = "default-src 'none'; script-src 'self'; " +
 	"style-src 'self' 'unsafe-inline'; img-src 'self' data:; " +
 	"font-src 'self' data:; connect-src 'self';"
 
+// SVG documents can fetch remote images even when scripts are sandboxed.
+const svgContentSecurityPolicy = "sandbox; default-src 'none'; style-src 'unsafe-inline'; img-src data:;"
+
 // Config configures a Server.
 type Config struct {
 	Root      string
@@ -174,9 +177,9 @@ func (s *Server) serveStatic(w http.ResponseWriter, abs, ext string) {
 	if ct := staticContentType[ext]; ct != "" {
 		w.Header().Set("Content-Type", ct)
 	}
-	// SVG may embed scripts; neutralize same-origin execution (spec §8.6).
+	// Block script execution and network subresources in standalone SVGs.
 	if ext == ".svg" {
-		w.Header().Set("Content-Security-Policy", "sandbox")
+		w.Header().Set("Content-Security-Policy", svgContentSecurityPolicy)
 	}
 	_, _ = io.Copy(w, f)
 }

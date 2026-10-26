@@ -107,6 +107,15 @@ macOS); on Windows, run in the foreground.
 File reads reject symlink replacements between path validation and opening.
 Replacing the served root directory itself requires restarting mdv.
 
+Standalone SVGs are sandboxed and cannot load network subresources; images
+embedded as `data:` URLs and inline styles remain supported.
+
+Responses disable MIME sniffing and suppress the Referer header when following
+links. Document pages cannot be embedded in frames or submit forms.
+
+HTTP request headers must arrive within five seconds; idle keep-alive
+connections expire after one minute. Live-reload streams remain supported.
+
 ### Subcommands
 
 | Command                        | Description                     |

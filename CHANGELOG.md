@@ -1,5 +1,17 @@
 # Changelog
 
+## [v0.1.9](https://github.com/gr1m0h/mdv/compare/v0.1.8...v0.1.9) - 2026-10-26
+
+- Update module github.com/yuin/goldmark/v2 to v2.1.9 by @renovate[bot] in https://github.com/gr1m0h/mdv/pull/28
+- fix: bound HTTP header and idle connection time by @gr1m0h in https://github.com/gr1m0h/mdv/pull/35
+- fix: harden response headers and document policy by @gr1m0h in https://github.com/gr1m0h/mdv/pull/34
+- fix: block network subresources in served SVG documents by @gr1m0h in https://github.com/gr1m0h/mdv/pull/33
+- fix: prevent file replacement from bypassing root checks by @gr1m0h in https://github.com/gr1m0h/mdv/pull/32
+- fix: block hidden files and directories from serving by @gr1m0h in https://github.com/gr1m0h/mdv/pull/31
+- fix: validate request hosts to prevent DNS rebinding by @gr1m0h in https://github.com/gr1m0h/mdv/pull/30
+- docs: clarify README usage and security guarantees by @gr1m0h in https://github.com/gr1m0h/mdv/pull/36
+- chore: update Mermaid bundle by @gr1m0h in https://github.com/gr1m0h/mdv/pull/37
+
 ## [v0.1.8](https://github.com/gr1m0h/mdv/compare/v0.1.7...v0.1.8) - 2026-10-22
 
 - fix: complete Goldmark v2 migration by @renovate[bot] in https://github.com/gr1m0h/mdv/pull/23

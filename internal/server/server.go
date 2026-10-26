@@ -42,6 +42,7 @@ const contentSecurityPolicy = "default-src 'none'; script-src 'self'; " +
 // Config configures a Server.
 type Config struct {
 	Root      string
+	BindHost  string // explicit bind host; empty defaults to loopback-only Host validation
 	Quiet     bool
 	Theme     string // auto|light|dark
 	CustomCSS string // absolute path to a user stylesheet, or "" for none
@@ -52,6 +53,7 @@ type Config struct {
 // Server serves a single Markdown root over HTTP.
 type Server struct {
 	root      string
+	bindHost  string
 	renderer  *render.Renderer
 	quiet     bool
 	theme     string
@@ -69,6 +71,7 @@ func New(cfg Config) *Server {
 	}
 	return &Server{
 		root:      cfg.Root,
+		bindHost:  cfg.BindHost,
 		renderer:  render.New(),
 		quiet:     cfg.Quiet,
 		theme:     cfg.Theme,
@@ -80,6 +83,10 @@ func New(cfg Config) *Server {
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if !s.allowedHost(r.Host) {
+		http.Error(w, "forbidden host", http.StatusForbidden)
+		return
+	}
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return

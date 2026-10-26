@@ -37,27 +37,5 @@ description = "Format check + vet + test"
 depends = ["fmt", "vet", "test"]
 
 [tasks.vendor-mermaid]
-description = "Vendor the real mermaid UMD bundle (the committed one is a stub)"
-shell = "bash -c"
-run = '''
-set -uo pipefail
-url="https://cdn.jsdelivr.net/npm/mermaid@${MERMAID_SPEC}/dist/mermaid.min.js"
-echo "downloading $url"
-if ! curl -fsSL "$url" -o "${STATIC}/mermaid.min.js"; then
-  echo "download failed: $url" >&2; exit 1
-fi
-if ! grep -q "mermaid" "${STATIC}/mermaid.min.js"; then
-  echo "downloaded file does not look like mermaid" >&2; exit 1
-fi
-curl -fsSL "https://cdn.jsdelivr.net/npm/mermaid@${MERMAID_SPEC}/LICENSE" -o "${STATIC}/mermaid.LICENSE" || true
-# Best-effort exact-version resolution; the SHA-256 is the authoritative pin.
-# Try the jsdelivr resolve API, then fall back to the version embedded in the
-# bundle, then to a generic label.
-ver=$(curl -fsSL "https://data.jsdelivr.com/v1/packages/npm/mermaid/resolved?specifier=${MERMAID_SPEC}" 2>/dev/null \
-  | sed -n 's/.*"version":"\([^"]*\)".*/\1/p')
-[ -z "$ver" ] && ver=$(grep -oE "${MERMAID_SPEC}\.[0-9]+\.[0-9]+" "${STATIC}/mermaid.min.js" | head -1)
-[ -z "$ver" ] && ver="${MERMAID_SPEC}.x (CDN-resolved)"
-sum=$(shasum -a 256 "${STATIC}/mermaid.min.js" | cut -d' ' -f1)
-printf 'mermaid %s\nsha256 %s\nsource %s\n' "$ver" "$sum" "$url" > "${STATIC}/mermaid.version"
-echo "wrote ${STATIC}/mermaid.min.js (${sum})"
-'''
+description = "Resolve and vendor a pinned Mermaid release with its license and checksum"
+run = "go run ./scripts/vendor-mermaid"

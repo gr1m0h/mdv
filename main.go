@@ -125,7 +125,11 @@ func run(args []string, stdout, stderr io.Writer, sig <-chan os.Signal) int {
 		Logger:    logger,
 	})
 
-	httpSrv := &http.Server{Handler: srv}
+	httpSrv := &http.Server{
+		Handler:           srv,
+		ReadHeaderTimeout: 5 * time.Second,
+		IdleTimeout:       time.Minute,
+	}
 
 	url := fmt.Sprintf("http://%s:%d%s", opts.host, port, openPath)
 

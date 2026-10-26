@@ -37,7 +37,8 @@ var staticContentType = map[string]string{
 // browser fetching remote images referenced from the Markdown (spec §8.4).
 const contentSecurityPolicy = "default-src 'none'; script-src 'self'; " +
 	"style-src 'self' 'unsafe-inline'; img-src 'self' data:; " +
-	"font-src 'self' data:; connect-src 'self';"
+	"font-src 'self' data:; connect-src 'self'; " +
+	"base-uri 'none'; form-action 'none'; frame-ancestors 'none';"
 
 // Config configures a Server.
 type Config struct {
@@ -80,6 +81,8 @@ func New(cfg Config) *Server {
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("Referrer-Policy", "no-referrer")
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return

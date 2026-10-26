@@ -104,6 +104,9 @@ macOS); on Windows, run in the foreground.
 > (or any non-loopback address) exposes it to the network: anyone who can reach
 > the port can read every file mdv serves. Only do this on a network you trust.
 
+Standalone SVGs are sandboxed and cannot load network subresources; images
+embedded as `data:` URLs and inline styles remain supported.
+
 Responses disable MIME sniffing and suppress the Referer header when following
 links. Document pages cannot be embedded in frames or submit forms.
 

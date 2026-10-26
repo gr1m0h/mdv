@@ -37,7 +37,11 @@ var staticContentType = map[string]string{
 // browser fetching remote images referenced from the Markdown (spec §8.4).
 const contentSecurityPolicy = "default-src 'none'; script-src 'self'; " +
 	"style-src 'self' 'unsafe-inline'; img-src 'self' data:; " +
-	"font-src 'self' data:; connect-src 'self';"
+	"font-src 'self' data:; connect-src 'self'; " +
+	"base-uri 'none'; form-action 'none'; frame-ancestors 'none';"
+
+// SVG documents can fetch remote images even when scripts are sandboxed.
+const svgContentSecurityPolicy = "sandbox; default-src 'none'; style-src 'unsafe-inline'; img-src data:;"
 
 // Config configures a Server.
 type Config struct {
@@ -54,6 +58,7 @@ type Config struct {
 type Server struct {
 	root      string
 	bindHost  string
+	rootInfo  os.FileInfo
 	renderer  *render.Renderer
 	quiet     bool
 	theme     string
@@ -69,9 +74,11 @@ func New(cfg Config) *Server {
 	if logger == nil {
 		logger = log.New(os.Stderr, "", 0)
 	}
+	rootInfo, _ := os.Stat(cfg.Root)
 	return &Server{
 		root:      cfg.Root,
 		bindHost:  cfg.BindHost,
+		rootInfo:  rootInfo,
 		renderer:  render.New(),
 		quiet:     cfg.Quiet,
 		theme:     cfg.Theme,
@@ -83,6 +90,8 @@ func New(cfg Config) *Server {
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("Referrer-Policy", "no-referrer")
 	if !s.allowedHost(r.Host) {
 		http.Error(w, "forbidden host", http.StatusForbidden)
 		return
@@ -171,7 +180,7 @@ func (s *Server) handleFile(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) serveStatic(w http.ResponseWriter, abs, ext string) {
-	f, err := os.Open(abs)
+	f, err := s.openFile(abs)
 	if err != nil {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
@@ -181,9 +190,9 @@ func (s *Server) serveStatic(w http.ResponseWriter, abs, ext string) {
 	if ct := staticContentType[ext]; ct != "" {
 		w.Header().Set("Content-Type", ct)
 	}
-	// SVG may embed scripts; neutralize same-origin execution (spec §8.6).
+	// Block script execution and network subresources in standalone SVGs.
 	if ext == ".svg" {
-		w.Header().Set("Content-Security-Policy", "sandbox")
+		w.Header().Set("Content-Security-Policy", svgContentSecurityPolicy)
 	}
 	_, _ = io.Copy(w, f)
 }
@@ -208,7 +217,13 @@ func (s *Server) handleFragment(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
-	data, err := os.ReadFile(abs)
+	f, err := s.openFile(abs)
+	if err != nil {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+	defer f.Close()
+	data, err := io.ReadAll(f)
 	if err != nil {
 		http.Error(w, "not found", http.StatusNotFound)
 		return

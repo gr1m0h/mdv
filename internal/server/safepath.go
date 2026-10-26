@@ -14,12 +14,15 @@ import (
 // that a legitimate typo for a non-existent file yields 404 (handled by the
 // caller via os.Stat) rather than 403.
 func (s *Server) safeResolve(rel string) (string, bool) {
+	if strings.ContainsRune(rel, '\x00') || hiddenPath(rel) {
+		return "", false
+	}
 	// 1) Normalize and join under root. "../" is clamped to the root.
 	clean := filepath.Clean("/" + filepath.ToSlash(rel))
 	abs := filepath.Join(s.root, clean)
 
-	// 2) String prefix check.
-	if abs != s.root && !strings.HasPrefix(abs, s.root+string(filepath.Separator)) {
+	// 2) Confirm the joined path is root-relative.
+	if local, err := filepath.Rel(s.root, abs); err != nil || !filepath.IsLocal(local) {
 		return "", false
 	}
 
@@ -35,8 +38,91 @@ func (s *Server) safeResolve(rel string) (string, bool) {
 	if err != nil {
 		return "", false
 	}
-	if real != s.root && !strings.HasPrefix(real, s.root+string(filepath.Separator)) {
+	resolvedRel, err := filepath.Rel(s.root, real)
+	if err != nil || !filepath.IsLocal(resolvedRel) || hiddenPath(resolvedRel) {
 		return "", false
 	}
-	return abs, true
+	suffix, err := filepath.Rel(probe, abs)
+	if err != nil {
+		return "", false
+	}
+	return filepath.Join(real, suffix), true
+}
+
+// openFile opens a previously resolved path beneath a directory handle. Each
+// component must still be the same non-symlink object after opening; this also
+// rejects replacements that point to hidden files inside the root.
+func (s *Server) openFile(abs string) (*os.File, error) {
+	rel, err := filepath.Rel(s.root, abs)
+	if err != nil || !filepath.IsLocal(rel) || hiddenPath(rel) {
+		return nil, os.ErrPermission
+	}
+	root, err := s.openRoot()
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = root.Close() }()
+	parts := strings.Split(filepath.ToSlash(rel), "/")
+	for _, part := range parts[:len(parts)-1] {
+		before, err := root.Lstat(part)
+		if err != nil {
+			return nil, err
+		}
+		if !before.IsDir() {
+			return nil, os.ErrPermission
+		}
+		next, err := root.OpenRoot(part)
+		if err != nil {
+			return nil, err
+		}
+		after, err := next.Stat(".")
+		if err != nil || !os.SameFile(before, after) {
+			_ = next.Close()
+			return nil, os.ErrPermission
+		}
+		_ = root.Close()
+		root = next
+	}
+	name := parts[len(parts)-1]
+	before, err := root.Lstat(name)
+	if err != nil {
+		return nil, err
+	}
+	if !before.Mode().IsRegular() {
+		return nil, os.ErrPermission
+	}
+	f, err := root.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	after, err := f.Stat()
+	if err != nil || !os.SameFile(before, after) {
+		_ = f.Close()
+		return nil, os.ErrPermission
+	}
+	return f, nil
+}
+
+// openRoot rejects replacement of the serving directory itself since startup.
+func (s *Server) openRoot() (*os.Root, error) {
+	root, err := os.OpenRoot(s.root)
+	if err != nil {
+		return nil, err
+	}
+	info, err := root.Stat(".")
+	if err != nil || s.rootInfo == nil || !os.SameFile(s.rootInfo, info) {
+		_ = root.Close()
+		return nil, os.ErrPermission
+	}
+	return root, nil
+}
+
+// hiddenPath ignores navigation components, but rejects dotfiles and dotdirs.
+func hiddenPath(path string) bool {
+	for _, part := range strings.Split(filepath.ToSlash(path), "/") {
+		if strings.HasPrefix(part, ".") && part != "." && part != ".." {
+			return true
+		}
+	}
+	return false
 }

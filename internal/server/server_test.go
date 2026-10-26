@@ -326,7 +326,7 @@ func TestSVGSandbox(t *testing.T) {
 	if rec.Code != 200 {
 		t.Fatalf("want 200, got %d", rec.Code)
 	}
-	if csp := rec.Header().Get("Content-Security-Policy"); csp != "sandbox" {
-		t.Errorf("svg CSP = %q, want sandbox", csp)
+	if csp := rec.Header().Get("Content-Security-Policy"); csp != svgContentSecurityPolicy {
+		t.Errorf("svg CSP = %q, want %q", csp, svgContentSecurityPolicy)
 	}
 }

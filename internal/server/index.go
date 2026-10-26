@@ -24,13 +24,19 @@ type indexData struct {
 
 // handleIndex renders a listing of all .md files under the root (spec §5).
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
+	root, err := s.openRoot()
+	if err != nil {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+	defer root.Close()
 	var entries []indexEntry
-	_ = filepath.WalkDir(s.root, func(path string, d fs.DirEntry, err error) error {
+	_ = fs.WalkDir(root.FS(), ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return nil
 		}
 		if d.IsDir() {
-			if strings.HasPrefix(d.Name(), ".") && path != s.root {
+			if strings.HasPrefix(d.Name(), ".") && path != "." {
 				return fs.SkipDir
 			}
 			return nil
@@ -38,14 +44,10 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		if strings.ToLower(filepath.Ext(path)) != ".md" {
 			return nil
 		}
-		rel, err := filepath.Rel(s.root, path)
-		if err != nil {
+		if _, ok := s.safeResolve(path); !ok {
 			return nil
 		}
-		if _, ok := s.safeResolve(rel); !ok {
-			return nil
-		}
-		entries = append(entries, indexEntry{Path: filepath.ToSlash(rel)})
+		entries = append(entries, indexEntry{Path: path})
 		return nil
 	})
 	sort.Slice(entries, func(i, j int) bool { return entries[i].Path < entries[j].Path })

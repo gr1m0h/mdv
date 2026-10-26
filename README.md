@@ -107,6 +107,9 @@ macOS); on Windows, run in the foreground.
 Responses disable MIME sniffing and suppress the Referer header when following
 links. Document pages cannot be embedded in frames or submit forms.
 
+HTTP request headers must arrive within five seconds; idle keep-alive
+connections expire after one minute. Live-reload streams remain supported.
+
 ### Subcommands
 
 | Command                        | Description                     |

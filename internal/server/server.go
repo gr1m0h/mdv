@@ -56,6 +56,7 @@ type Config struct {
 // Server serves a single Markdown root over HTTP.
 type Server struct {
 	root      string
+	rootInfo  os.FileInfo
 	renderer  *render.Renderer
 	quiet     bool
 	theme     string
@@ -71,8 +72,10 @@ func New(cfg Config) *Server {
 	if logger == nil {
 		logger = log.New(os.Stderr, "", 0)
 	}
+	rootInfo, _ := os.Stat(cfg.Root)
 	return &Server{
 		root:      cfg.Root,
+		rootInfo:  rootInfo,
 		renderer:  render.New(),
 		quiet:     cfg.Quiet,
 		theme:     cfg.Theme,
@@ -170,7 +173,7 @@ func (s *Server) handleFile(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) serveStatic(w http.ResponseWriter, abs, ext string) {
-	f, err := os.Open(abs)
+	f, err := s.openFile(abs)
 	if err != nil {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
@@ -207,7 +210,13 @@ func (s *Server) handleFragment(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
-	data, err := os.ReadFile(abs)
+	f, err := s.openFile(abs)
+	if err != nil {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+	defer f.Close()
+	data, err := io.ReadAll(f)
 	if err != nil {
 		http.Error(w, "not found", http.StatusNotFound)
 		return

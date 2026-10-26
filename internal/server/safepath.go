@@ -14,6 +14,9 @@ import (
 // that a legitimate typo for a non-existent file yields 404 (handled by the
 // caller via os.Stat) rather than 403.
 func (s *Server) safeResolve(rel string) (string, bool) {
+	if hiddenPath(rel) {
+		return "", false
+	}
 	// 1) Normalize and join under root. "../" is clamped to the root.
 	clean := filepath.Clean("/" + filepath.ToSlash(rel))
 	abs := filepath.Join(s.root, clean)
@@ -38,5 +41,19 @@ func (s *Server) safeResolve(rel string) (string, bool) {
 	if real != s.root && !strings.HasPrefix(real, s.root+string(filepath.Separator)) {
 		return "", false
 	}
+	resolvedRel, err := filepath.Rel(s.root, real)
+	if err != nil || hiddenPath(resolvedRel) {
+		return "", false
+	}
 	return abs, true
+}
+
+// hiddenPath ignores navigation components, but rejects dotfiles and dotdirs.
+func hiddenPath(path string) bool {
+	for _, part := range strings.Split(filepath.ToSlash(path), "/") {
+		if strings.HasPrefix(part, ".") && part != "." && part != ".." {
+			return true
+		}
+	}
+	return false
 }

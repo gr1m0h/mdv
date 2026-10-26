@@ -42,6 +42,9 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return nil
 		}
+		if _, ok := s.safeResolve(rel); !ok {
+			return nil
+		}
 		entries = append(entries, indexEntry{Path: filepath.ToSlash(rel)})
 		return nil
 	})

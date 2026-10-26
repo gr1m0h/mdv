@@ -104,6 +104,10 @@ macOS); on Windows, run in the foreground.
 > (or any non-loopback address) exposes it to the network: anyone who can reach
 > the port can read every file mdv serves. Only do this on a network you trust.
 
+Requests must use a loopback Host (`localhost` or a loopback IP), or the
+hostname/IP explicitly selected with `--host` (or `MDV_HOST`). Wildcard binds
+(`0.0.0.0` or `::`) additionally accept IP literals, but not arbitrary hostnames.
+
 Dotfiles and files inside dot-directories are not served or listed, including
 through symlinks. A custom stylesheet explicitly selected with `--css`, or the
 auto-loaded `.mdv.css`, remains available through the dedicated CSS endpoint.

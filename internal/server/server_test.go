@@ -45,6 +45,7 @@ func mustWrite(t *testing.T, path string, data []byte) {
 
 func do(srv *Server, method, target string) *httptest.ResponseRecorder {
 	req := httptest.NewRequest(method, target, nil)
+	req.Host = "localhost:4649"
 	rec := httptest.NewRecorder()
 	srv.ServeHTTP(rec, req)
 	return rec

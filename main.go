@@ -118,6 +118,7 @@ func run(args []string, stdout, stderr io.Writer, sig <-chan os.Signal) int {
 
 	srv := server.New(server.Config{
 		Root:      root,
+		BindHost:  opts.host,
 		Quiet:     opts.quiet,
 		Theme:     opts.theme,
 		CustomCSS: customCSS,

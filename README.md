@@ -104,6 +104,10 @@ macOS); on Windows, run in the foreground.
 > (or any non-loopback address) exposes it to the network: anyone who can reach
 > the port can read every file mdv serves. Only do this on a network you trust.
 
+Dotfiles and files inside dot-directories are not served or listed, including
+through symlinks. A custom stylesheet explicitly selected with `--css`, or the
+auto-loaded `.mdv.css`, remains available through the dedicated CSS endpoint.
+
 File reads reject symlink replacements between path validation and opening.
 Replacing the served root directory itself requires restarting mdv.
 

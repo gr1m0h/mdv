@@ -104,6 +104,9 @@ macOS); on Windows, run in the foreground.
 > (or any non-loopback address) exposes it to the network: anyone who can reach
 > the port can read every file mdv serves. Only do this on a network you trust.
 
+Responses disable MIME sniffing and suppress the Referer header when following
+links. Document pages cannot be embedded in frames or submit forms.
+
 HTTP request headers must arrive within five seconds; idle keep-alive
 connections expire after one minute. Live-reload streams remain supported.
 

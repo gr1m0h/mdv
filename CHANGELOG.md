@@ -1,5 +1,11 @@
 # Changelog
 
+## [v0.1.10](https://github.com/gr1m0h/mdv/compare/v0.1.9...v0.1.10) - 2026-10-31
+
+- fix(deps): update module github.com/yuin/goldmark/v2 to v2.1.11 by @renovate[bot] in https://github.com/gr1m0h/mdv/pull/38
+- fix(deps): update module github.com/yuin/goldmark/v2 to v2.1.12 by @renovate[bot] in https://github.com/gr1m0h/mdv/pull/40
+- fix(deps): update module github.com/yuin/goldmark/v2 to v2.1.13 by @renovate[bot] in https://github.com/gr1m0h/mdv/pull/41
+
 ## [v0.1.9](https://github.com/gr1m0h/mdv/compare/v0.1.8...v0.1.9) - 2026-10-26
 
 - Update module github.com/yuin/goldmark/v2 to v2.1.9 by @renovate[bot] in https://github.com/gr1m0h/mdv/pull/28

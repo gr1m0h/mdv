@@ -15,6 +15,13 @@
   var shellEl = document.getElementById("shell");
   var tocToggleEl = document.getElementById("toc-toggle");
 
+  var sourceEl = document.getElementById("source");
+  var sourceToggleEl = document.getElementById("source-toggle");
+  var sourcePanelEl = document.getElementById("source-panel");
+  var copyEl = document.getElementById("source-copy");
+  var showingSource = false;
+  var viewScroll = { preview: 0, source: 0 };
+
   var mermaidLoaded = false;
   var statusTimer = null;
 
@@ -61,7 +68,7 @@
     toggleEl.textContent = next === "dark" ? "🌙" : "☀️";
     toggleEl.setAttribute(
       "aria-label",
-      next === "dark" ? "ダークモードに切り替え" : "ライトモードに切り替え"
+      next === "dark" ? "Switch to dark theme" : "Switch to light theme"
     );
     toggleEl.title = toggleEl.getAttribute("aria-label");
   }
@@ -97,15 +104,84 @@
     return;
   }
 
+  // Keep both views mounted so switching preserves diagrams and selections.
+  if (sourceToggleEl && sourceEl && sourcePanelEl) {
+    sourceToggleEl.addEventListener("click", function () {
+      viewScroll[showingSource ? "source" : "preview"] = window.scrollY;
+      showingSource = !showingSource;
+      docEl.hidden = showingSource;
+      sourcePanelEl.hidden = !showingSource;
+      if (shellEl) shellEl.classList.toggle("source-view", showingSource);
+      if (tocToggleEl) tocToggleEl.hidden = showingSource;
+      sourceToggleEl.title = showingSource ? "Show preview" : "Show Markdown source";
+      sourceToggleEl.setAttribute("aria-label", sourceToggleEl.title);
+      sourceToggleEl.setAttribute("aria-pressed", String(showingSource));
+      window.scrollTo(0, viewScroll[showingSource ? "source" : "preview"]);
+    });
+  }
+
+  function bindCopy(button, getText, label) {
+    var timer = null;
+    button.classList.remove("copied", "copy-error");
+    button.setAttribute("aria-label", label);
+    button.title = label;
+    function feedback(success, message) {
+      clearTimeout(timer);
+      button.classList.remove("copied", "copy-error");
+      button.classList.add(success ? "copied" : "copy-error");
+      button.setAttribute("aria-label", message);
+      button.title = message;
+      showStatus(message, success ? "success" : "error");
+      timer = setTimeout(function () {
+        button.classList.remove("copied", "copy-error");
+        button.setAttribute("aria-label", label);
+        button.title = label;
+      }, success ? 1800 : 4000);
+    }
+    button.addEventListener("click", function () {
+      if (!navigator.clipboard || !navigator.clipboard.writeText) {
+        feedback(false, "Copy unavailable. Select the text to copy.");
+        return;
+      }
+      navigator.clipboard.writeText(getText()).then(function () {
+        feedback(true, "Copied!");
+      }).catch(function () {
+        feedback(false, "Copy failed. Select the text to copy.");
+      });
+    });
+  }
+
+  if (copyEl && sourceEl) {
+    bindCopy(copyEl, function () { return sourceEl.textContent; }, "Copy Markdown");
+  }
+
+  function addCodeCopyButtons() {
+    if (!copyEl) return;
+    docEl.querySelectorAll("pre").forEach(function (pre) {
+      var code = pre.querySelector("code");
+      if (!code) return;
+      var panel = document.createElement("div");
+      panel.className = "mdv-code-panel";
+      var button = copyEl.cloneNode(true);
+      button.removeAttribute("id");
+      button.classList.remove("copied");
+      bindCopy(button, function () { return code.textContent; }, "Copy code");
+      pre.parentNode.insertBefore(panel, pre);
+      panel.appendChild(button);
+      panel.appendChild(pre);
+    });
+  }
+
   // ---- status bar ----
-  function showStatus(text) {
+  function showStatus(text, kind) {
     if (!statusEl) return;
     statusEl.textContent = text;
+    statusEl.setAttribute("data-kind", kind || "info");
     statusEl.classList.add("show");
     clearTimeout(statusTimer);
     statusTimer = setTimeout(function () {
       statusEl.classList.remove("show");
-    }, 1200);
+    }, kind === "error" ? 4000 : 1800);
   }
 
   // ---- sidebar (TOC) collapse ----
@@ -134,7 +210,7 @@
     if (!tocToggleEl) return;
     tocToggleEl.textContent = collapsed ? "☰" : "«";
     tocToggleEl.setAttribute("aria-expanded", collapsed ? "false" : "true");
-    var label = collapsed ? "サイドバーを開く" : "サイドバーを閉じる";
+    var label = collapsed ? "Show sidebar" : "Hide sidebar";
     tocToggleEl.setAttribute("aria-label", label);
     tocToggleEl.title = label;
   }
@@ -217,6 +293,10 @@
       })
       .then(function (data) {
         docEl.innerHTML = data.html;
+        addCodeCopyButtons();
+        // Raw Markdown must stay text, even when it contains HTML or scripts.
+        if (sourceEl) sourceEl.textContent = data.source;
+        if (sourceToggleEl) sourceToggleEl.disabled = false;
         if (data.title) document.title = data.title;
         buildTOC(data.toc);
         if (data.hasMermaid) {

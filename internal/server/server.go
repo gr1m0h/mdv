@@ -240,7 +240,10 @@ func (s *Server) handleFragment(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
-	if err := json.NewEncoder(w).Encode(res); err != nil {
+	if err := json.NewEncoder(w).Encode(struct {
+		*render.Result
+		Source string `json:"source"`
+	}{res, string(data)}); err != nil {
 		s.logger.Printf("mdv: encode fragment: %v", err)
 	}
 }
@@ -326,13 +329,23 @@ const shellHTML = `<!doctype html>
 {{if .CustomCSS}}<link rel="stylesheet" href="/__mdv/custom.css">
 {{end}}</head>
 <body data-path="{{.Path}}" data-theme="{{.Theme}}">
-<button class="mdv-toc-toggle hidden" id="toc-toggle" type="button" aria-label="サイドバーを閉じる" title="サイドバーを閉じる" aria-expanded="true">☰</button>
-<button class="mdv-theme-toggle" id="theme-toggle" type="button" aria-label="テーマ切り替え" title="テーマ切り替え"></button>
+<button class="mdv-toc-toggle hidden" id="toc-toggle" type="button" aria-label="Hide sidebar" title="Hide sidebar" aria-expanded="true">☰</button>
+<button class="mdv-source-toggle" id="source-toggle" type="button" aria-controls="doc source-panel" aria-pressed="false" aria-label="Show Markdown source" title="Show Markdown source" disabled>
+<svg class="source-icon" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8 7-5 5 5 5m8-10 5 5-5 5m-3-14-2 18"/></svg>
+<svg class="preview-icon" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+</button>
+<button class="mdv-theme-toggle" id="theme-toggle" type="button" aria-label="Toggle theme" title="Toggle theme"></button>
 <div class="mdv-shell" id="shell">
 <nav class="mdv-toc hidden" id="toc"></nav>
-<main class="mdv-main"><div class="markdown-body" id="doc"></div></main>
+<main class="mdv-main"><div class="markdown-body" id="doc"></div><div class="mdv-source-panel" id="source-panel" hidden>
+<button class="mdv-copy" id="source-copy" type="button" aria-label="Copy Markdown" title="Copy Markdown">
+<svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg>
+<svg class="copied-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>
+</button>
+<pre class="mdv-source" id="source" aria-label="Markdown source" tabindex="0"></pre>
+</div></main>
 </div>
-<div class="mdv-status" id="status"></div>
+<div class="mdv-status" id="status" role="status" aria-live="polite"></div>
 <script src="/__mdv/assets/mdv.js"></script>
 </body>
 </html>

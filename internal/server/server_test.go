@@ -138,6 +138,35 @@ func TestFragmentJSON(t *testing.T) {
 	}
 }
 
+// Source travels with the fragment, preserving Markdown syntax and HTML as text.
+func TestFragmentSource(t *testing.T) {
+	srv, root := newTestServer(t)
+	source := "# 原文\r\n\r\n<script>alert('test')</script>\n\t**bold** & <tag>\n"
+	mustWrite(t, filepath.Join(root, "source.md"), []byte(source))
+	rec := do(srv, "GET", "/__mdv/fragment?path=source.md")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d", rec.Code)
+	}
+	var res struct {
+		Source string `json:"source"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &res); err != nil {
+		t.Fatal(err)
+	}
+	if res.Source != source {
+		t.Errorf("source = %q, want %q", res.Source, source)
+	}
+	// A fresh fragment must also carry file edits used by live reload.
+	mustWrite(t, filepath.Join(root, "source.md"), []byte("updated\n"))
+	rec = do(srv, "GET", "/__mdv/fragment?path=source.md")
+	if err := json.Unmarshal(rec.Body.Bytes(), &res); err != nil {
+		t.Fatal(err)
+	}
+	if res.Source != "updated\n" {
+		t.Errorf("stale source: %q", res.Source)
+	}
+}
+
 func TestShellHasCSP(t *testing.T) {
 	srv, _ := newTestServer(t)
 	rec := do(srv, "GET", "/README.md")

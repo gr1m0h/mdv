@@ -1,6 +1,6 @@
 module github.com/gr1m0h/mdv
 
-go 1.27.3
+go 1.27.4
 
 require (
 	github.com/alecthomas/chroma/v3 v3.0.0-alpha.5

@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.1.11](https://github.com/gr1m0h/mdv/compare/v0.1.10...v0.1.11) - 2026-11-21
+
+- fix(deps): update module github.com/alecthomas/chroma/v3 to v3.0.0-alpha.6 by @renovate[bot] in https://github.com/gr1m0h/mdv/pull/47
+
 ## [v0.1.10](https://github.com/gr1m0h/mdv/compare/v0.1.9...v0.1.10) - 2026-11-16
 
 - fix(deps): update module github.com/yuin/goldmark/v2 to v2.1.11 by @renovate[bot] in https://github.com/gr1m0h/mdv/pull/38

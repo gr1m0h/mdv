@@ -3,7 +3,7 @@ module github.com/gr1m0h/mdv
 go 1.27.4
 
 require (
-	github.com/alecthomas/chroma/v3 v3.0.0-alpha.7
+	github.com/alecthomas/chroma/v3 v3.0.0
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/microcosm-cc/bluemonday v1.0.27
 	github.com/yuin/goldmark-highlighting/v3 v3.1.1
